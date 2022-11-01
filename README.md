@@ -14,3 +14,5 @@
 	- It might also ask for some additional setup before running! Watch for green text and non-zero exits. You might need to supply the path you downloaded MariaDB to in the `.mariadb_path` file.
 1. In another terminal, run `python main.py`. This will communicate with MySQL and run a server that listens for HTTP requests.
 1. That's it, that's the backend.
+
+(Also, note that MySQL and MariaDB are basically interchangable -- MariaDB is an open-source reimplementation of MySQL.)
