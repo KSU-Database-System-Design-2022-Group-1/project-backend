@@ -1,5 +1,15 @@
+BEGIN;
+
+-- DESTRUCTIVE! This will initialize things!
+-- (But since it's inside a transaction,
+--  it won't make half a database --
+--  it's guaranteed to make Something)
+DROP DATABASE IF EXISTS kstores;
+CREATE DATABASE kstores;
+USE kstores;
+
 CREATE TABLE user_profile (
-	customer_id INT AUTO_INCREMENT,
+	customer_id INT AUTO_INCREMENT NOT NULL,
 	
 	first_name VARCHAR(40) NOT NULL,
 	middle_name VARCHAR(40),
@@ -27,55 +37,25 @@ CREATE TABLE user_profile (
 	PRIMARY KEY (customer_id)
 );
 
-CREATE TABLE order (
-	order_id INT AUTO_INCREMENT NOT NULL,
-	customer_id INT NOT NULL,
+CREATE TABLE catalog_images (
+	image_id INT AUTO_INCREMENT NOT NULL,
 	
-	total_price DECIMAL(6,2),
-	total_weight FLOAT,
-	-- stored as proper attributes since price and weight may change after an order is completed.
+	image BLOB,
+	alt_text TINYTEXT,
 	
-	status ENUM('ordered', 'paid', 'shipped', 'delivered'),
-	
-	PRIMARY KEY (order_id),
-	FOREIGN KEY (customer_id) REFERENCES user_profile (customer_id)
-);
-
-CREATE TABLE order_item (
-	order_id INT,
-	item_id INT,
-	variant_id INT,
-	
-	quantity INT,
-	
-	PRIMARY KEY (order_id, item_id, variant_id),
-	FOREIGN KEY (order_id) REFERENCES order (order_id),
-	FOREIGN KEY (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
-);
-
-CREATE TABLE shopping_cart (
-	customer_id INT,
-	item_id INT,
-	variant_id INT,
-	
-	quantity INT,
-	
-	PRIMARY KEY (customer_id, item_id, variant_id),
-	FOREIGN KEY (customer_id) REFERENCES user_profile (customer_id),
-	FOREIGN KEY (item_id) REFERENCES item_catalog (item_id),
-	FOREIGN KEY (item_id, variant_id) REFERENCES variant_catalog (variant_id)
+	PRIMARY KEY (image_id)
 );
 
 CREATE TABLE item_catalog (
 	item_id INT AUTO_INCREMENT NOT NULL,
 	
 	item_name VARCHAR(64),
-	description CLOB,
+	description TEXT,
 	category VARCHAR(32),
 	item_image INT,
 	
 	-- price_max -- get price of the most expensive variant
-	-- price_max -- get price of the least expensive variant
+	-- price_min -- get price of the least expensive variant
 	
 	PRIMARY KEY (item_id),
 	FOREIGN KEY (item_image) REFERENCES catalog_images (image_id)
@@ -97,11 +77,46 @@ CREATE TABLE variant_catalog (
 	FOREIGN KEY (variant_image) REFERENCES catalog_images (image_id)
 );
 
-CREATE TABLE catalog_images (
-	image_id INT AUTO_INCREMENT NOT NULL,
+CREATE TABLE shopping_cart (
+	customer_id INT NOT NULL,
+	item_id INT NOT NULL,
+	variant_id INT NOT NULL,
 	
-	image BLOB,
-	alt_text TINYTEXT,
+	quantity INT UNSIGNED NOT NULL,
 	
-	PRIMARY KEY (image_id)
+	PRIMARY KEY (customer_id, item_id, variant_id),
+	FOREIGN KEY `fk1` (customer_id) REFERENCES user_profile (customer_id),
+	FOREIGN KEY `fk2` (item_id) REFERENCES item_catalog (item_id),
+	FOREIGN KEY `fk3` (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
 );
+
+CREATE TABLE `order` (
+	order_id INT AUTO_INCREMENT NOT NULL,
+	customer_id INT NOT NULL,
+	
+	total_price DECIMAL(6,2),
+	total_weight FLOAT,
+	-- stored as proper attributes since
+	-- price and weight may change
+	-- after an order is completed.
+	
+	status ENUM('ordered', 'paid', 'shipped', 'delivered'),
+	
+	PRIMARY KEY (order_id),
+	FOREIGN KEY (customer_id) REFERENCES user_profile (customer_id)
+);
+
+CREATE TABLE order_item (
+	order_id INT NOT NULL,
+	item_id INT NOT NULL,
+	variant_id INT NOT NULL,
+	
+	quantity INT UNSIGNED NOT NULL,
+	
+	PRIMARY KEY (order_id, item_id, variant_id),
+	FOREIGN KEY `fk4` (order_id) REFERENCES `order` (order_id),
+	FOREIGN KEY `fk5` (item_id) REFERENCES item_catalog (item_id),
+	FOREIGN KEY `fk6` (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
+);
+
+COMMIT WORK;

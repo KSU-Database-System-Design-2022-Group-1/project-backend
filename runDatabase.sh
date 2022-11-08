@@ -111,6 +111,12 @@ if [ ! -f ./database/data/my.ini ]; then
 	sayThing "Done setting this up! You shouldn't see this again, unless you delete the /database/ folder."
 fi
 
+# # TODO: figure out how to run this automatically.
+# if [ ! -d ./database/data/kstores ]; then
+# 	sayThing "KStores database doesn't seem to exist! Creating from DDL file..."
+# 	$MARIADB_PATH/bin/mysql -u root -h localhost -P $MARIADB_PORT < store-ddl.sql
+# fi
+
 # Launch the database server, without registering a Windows service.
 sayThing "Running MySQL Server at port $MARIADB_PORT! Press Ctrl+C in terminal to stop."
 $MARIADB_PATH/mysqld --basedir=./database/ --datadir=./database/data/ --console
