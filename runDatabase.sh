@@ -1,4 +1,5 @@
-set -eu
+#! /bin/bash
+set -euo pipefail
 
 # Colorful message writer thing.
 function sayThing {
@@ -18,22 +19,22 @@ if [ -s .mariadb_path ]; then # Is there a path override file?
 	MARIADB_PATH=$(head -n 1 .mariadb_path | sed 's/\n$//; s/\/$//')
 	sayThing "\
 Read MariaDB path from .mariadb_path file.
-$MARIADB_PATH"
+  $MARIADB_PATH"
 elif command -v mariadb >/dev/null 2>&1; then  # Is it in the system's PATH variable?
 	MARIADB_PATH=$(command -v mariadb | sed 's/\/mariadb$//')
 	echo "$MARIADB_PATH" > .mariadb_path
 	sayThing "\
 Automatically found this possible MariaDB installation:
-$MARIADB_PATH
+  $MARIADB_PATH
 Is that cool? If so, run this script again.
 If not, edit the .mariadb_path file that has been automatically created,
- replacing the path with the correct MariaDB install path. Thanks!
+ replacing the path with the correct MySQL/MariaDB install path. Thanks!
 If you're on Windows, it should point to the /bin subfolder specifically."
 	exit 1
 	# Not bothering with any yes/no prompts.
 else # Otherwise, make the path override file.
 	sayThing "\
-Hey! Sorry, I couldn't find your MariaDB installation automatically.
+Hey! Sorry, I couldn't find your MySQL/MariaDB installation automatically.
 I've created a .mariadb_path that you should put the path to your MariaDB install in.
 If you're on Windows, it should point to the /bin subfolder specifically."
 	touch .mariadb_path
@@ -49,7 +50,7 @@ if command -v cygpath >/dev/null 2>&1; then
 	
 	sayThing "\
 Reformatted path.
-$MARIADB_PATH"
+  $MARIADB_PATH"
 fi
 # Shell creators really do make up syntax every day
 
@@ -75,8 +76,10 @@ if [ ! -f ./database/data/my.ini ]; then
 	
 	# Make the config file.
 	cat <<-THE_CONFIG_FILE > ./my.ini
-		[client-server]
+		[client]
+		port=$MARIADB_PORT
 		
+		[server]
 		port=$MARIADB_PORT
 		
 		[mysqld]
@@ -93,7 +96,7 @@ if [ ! -f ./database/data/my.ini ]; then
 		innodb_log_buffer_size=8M
 		# default_storage_engine=Aria
 	THE_CONFIG_FILE
-	# (I made the redo log and  smaller, because those are
+	# (I made the redo log and etc. smaller, because those are
 	# massive! And I figure we're not doing anything fancy just yet. Maybe
 	# in the future we can figure out if this is a good thing to remove.)
 	# (Either way, this makes the local database 0.1GB instead of 1GB.)
@@ -111,11 +114,46 @@ if [ ! -f ./database/data/my.ini ]; then
 	sayThing "Done setting this up! You shouldn't see this again, unless you delete the /database/ folder."
 fi
 
-# # TODO: figure out how to run this automatically.
-# if [ ! -d ./database/data/kstores ]; then
-# 	sayThing "KStores database doesn't seem to exist! Creating from DDL file..."
-# 	$MARIADB_PATH/bin/mysql -u root -h localhost -P $MARIADB_PORT < store-ddl.sql
-# fi
+# Run the definition script if kstores isn't present 
+if [ ! -d ./database/data/kstores ]; then
+	sayThing "KStores database doesn't seem to exist! Creating from definition script..."
+	
+	if ps | grep "/mysqld"; then
+		sayThing "An unrelated MySQL server appears to be running.
+	Check 'ps' (Linux) or Windows Task Manager's 'Details' tab."
+		exit 1
+	fi
+	
+	# Launch the server in the background,
+	$MARIADB_PATH/mysqld --basedir=./database/ --datadir=./database/data/ >/dev/null &
+	
+	# Connect to it, and then run the definition script on it.
+	$MARIADB_PATH/mysql -u root -h localhost -P $MARIADB_PORT --show-warnings < ddl.sql
+	THE_SETUP_RESULT=$?
+	
+	# Once the definition script is done,
+	kill -s SIGINT $! # kill the server process.
+	wait # and wait for it to finish up, so it releases its file locks.
+	
+	# (i have to kill with SIGINT, otherwise server won't terminate gracefully
+	#  and it might not even execute what we asked in the first place.)
+	# (is this a race condition? if so, it won't be a problem thanks to the
+	#  whole atomic transaction thing in place in the definition script.)
+	
+	if [ $THE_SETUP_RESULT -eq 0 ]; then
+		sayThing "Done setting up the 'kstores' database!"
+	else
+		sayThing "Oh, something bad happened while running the definition script."
+		exit 1
+	fi
+	# Seeing the server start up 3 times in a row for 3 different steps of initialization
+	# feels slightly bad. But if it works and it only does it once, that's probably fine.
+	
+	if [ ! -d ./database/data/kstores ]; then
+		sayThing "Hmm. MySQL exited fine, but I'm not seeing the 'kstores' database anywhere."
+		exit 1
+	fi
+fi
 
 # Launch the database server, without registering a Windows service.
 sayThing "Running MySQL Server at port $MARIADB_PORT! Press Ctrl+C in terminal to stop."
@@ -123,4 +161,10 @@ $MARIADB_PATH/mysqld --basedir=./database/ --datadir=./database/data/ --console
 
 # # Launch the monitor.
 # sayThing "Connecting to MySQL Server at port $MARIADB_PORT. To exit, type 'quit'."
-# $MARIADB_PATH/bin/mysql -u root -h localhost -P $MARIADB_PORT
+# $MARIADB_PATH/mysql -u root -h localhost -P $MARIADB_PORT kstores --show-warnings
+
+# Just staying vigilant.
+if ps | grep "/mysqld"; then
+	sayThing "Warning: somewhere on your computer, MySQL is still running.
+Check 'ps' (Linux) or Windows Task Manager's 'Details' tab."
+fi

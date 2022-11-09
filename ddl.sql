@@ -85,9 +85,9 @@ CREATE TABLE shopping_cart (
 	quantity INT UNSIGNED NOT NULL,
 	
 	PRIMARY KEY (customer_id, item_id, variant_id),
-	FOREIGN KEY `fk1` (customer_id) REFERENCES user_profile (customer_id),
-	FOREIGN KEY `fk2` (item_id) REFERENCES item_catalog (item_id),
-	FOREIGN KEY `fk3` (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
+	FOREIGN KEY (customer_id) REFERENCES user_profile (customer_id),
+	FOREIGN KEY (item_id) REFERENCES item_catalog (item_id),
+	FOREIGN KEY (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
 );
 
 CREATE TABLE `order` (
@@ -114,9 +114,9 @@ CREATE TABLE order_item (
 	quantity INT UNSIGNED NOT NULL,
 	
 	PRIMARY KEY (order_id, item_id, variant_id),
-	FOREIGN KEY `fk4` (order_id) REFERENCES `order` (order_id),
-	FOREIGN KEY `fk5` (item_id) REFERENCES item_catalog (item_id),
-	FOREIGN KEY `fk6` (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
+	FOREIGN KEY (order_id) REFERENCES `order` (order_id),
+	FOREIGN KEY (item_id) REFERENCES item_catalog (item_id),
+	FOREIGN KEY (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
 );
 
 COMMIT WORK;

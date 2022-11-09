@@ -12,14 +12,14 @@ def print_contacts(cur):
 	
 	# Initialize Variables
 	contacts = []
-
+	
 	# Retrieve Contacts
 	cur.execute("SELECT first_name, last_name, email FROM test.contacts")
-
+	
 	# Prepare Contacts
 	for (first_name, last_name, email) in cur:
 		contacts.append(f"{first_name} {last_name} <{email}>")
-
+	
 	# List Contacts
 	print("\n".join(contacts))
 
