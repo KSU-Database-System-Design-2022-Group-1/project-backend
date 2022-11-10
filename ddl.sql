@@ -8,7 +8,7 @@ DROP DATABASE IF EXISTS kstores;
 CREATE DATABASE kstores;
 USE kstores;
 
-CREATE TABLE user_profile (
+CREATE TABLE customer (
 	customer_id INT AUTO_INCREMENT NOT NULL,
 	
 	first_name VARCHAR(40) NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE shopping_cart (
 	quantity INT UNSIGNED NOT NULL,
 	
 	PRIMARY KEY (customer_id, item_id, variant_id),
-	FOREIGN KEY (customer_id) REFERENCES user_profile (customer_id),
+	FOREIGN KEY (customer_id) REFERENCES customer (customer_id),
 	FOREIGN KEY (item_id) REFERENCES item_catalog (item_id),
 	FOREIGN KEY (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
 );
@@ -103,7 +103,7 @@ CREATE TABLE `order` (
 	status ENUM('ordered', 'paid', 'shipped', 'delivered'),
 	
 	PRIMARY KEY (order_id),
-	FOREIGN KEY (customer_id) REFERENCES user_profile (customer_id)
+	FOREIGN KEY (customer_id) REFERENCES customer (customer_id)
 );
 
 CREATE TABLE order_item (
