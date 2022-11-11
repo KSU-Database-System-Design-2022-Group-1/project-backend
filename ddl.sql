@@ -67,9 +67,9 @@ CREATE TABLE variant_catalog (
 	
 	size ENUM('XS', 'S', 'M', 'L', 'XL'),
 	color VARCHAR(32),
-	price DECIMAL(6,2),
-	stock INT,
-	weight FLOAT,
+	price DECIMAL(6,2) NOT NULL,
+	stock INT UNSIGNED NOT NULL,
+	weight FLOAT NOT NULL,
 	variant_image INT,
 	
 	PRIMARY KEY (item_id, variant_id),
@@ -94,8 +94,8 @@ CREATE TABLE `order` (
 	order_id INT AUTO_INCREMENT NOT NULL,
 	customer_id INT NOT NULL,
 	
-	total_price DECIMAL(6,2),
-	total_weight FLOAT,
+	total_price DECIMAL(6,2) NOT NULL,
+	total_weight FLOAT NOT NULL,
 	-- stored as proper attributes since
 	-- price and weight may change
 	-- after an order is completed.
