@@ -14,6 +14,18 @@ class Database:
 		self.cur = cur
 		self.cur.execute("USE kstores;")
 	
+	# Returns the total price and weight (in a tuple, in that order) of the cart.
+	def get_cart_info(self, customer_id: int):
+		self.cur.execute("""
+			SELECT COALESCE(SUM(price), 0), COALESCE(SUM(weight), 0)
+			FROM shopping_cart JOIN variant_catalog USING (item_id, variant_id)
+			WHERE customer_id = ?;
+			""", (customer_id,))
+		
+		# If shopping cart empty, returns (0, 0)
+		# otherwise, returns (price, weight)
+		return self.cur.fetchone()
+	
 	# Creates a catalog item and returns its new item_id.
 	def create_catalog_item(
 		self,
@@ -68,18 +80,20 @@ class Database:
 			""", (customer_id, item_id, variant_id, quantity))
 	
 	def place_order(self, customer_id: int):
-		# Create a new empty order with default fields.
+		# Calculate total price and weight of shopping cart items.
+		(price, weight) = self.get_cart_info(customer_id)
+		
+		# Create a new order and fill it with info from the shopping cart.
 		self.cur.execute("""
-			INSERT INTO `order` (customer_id)
-			VALUES (?);
-			""", (customer_id,))
+			INSERT INTO `order` (customer_id, total_price, total_weight, status)
+			VALUES (?, ?, ?, NULL);
+			""", (customer_id, price, weight))
 		# One of the default fields will be order_id,
 		# the primary key which is auto-incremented.
 		
 		# Thanks to LAST_INSERT_ID, we don't need to fetch
 		# the auto-incremented order_id, but if we needed:
 		#   order_id = cur.lastrowid
-		print(self.cur.lastrowid)
 		
 		# Insert items from shopping cart into newly-created order.
 		self.cur.execute("""
@@ -89,33 +103,35 @@ class Database:
 			WHERE customer_id = ?;
 			""", (customer_id,))
 		
+		# TODO: decrement stock for items in shopping cart
+		# (but what if we take too many items?)
+		# (and what if Alice buys out all the stock of some item
+		# Bob has in his cart before he checks out his cart?)
+		
 		# Remove them from shopping cart now that they're copied over.
 		self.cur.execute("""
 			DELETE FROM shopping_cart
 			WHERE customer_id = ?;
 			""", (customer_id,))
 		
-		# Finally, update the other data about the order.
-		# In our final store, these values will be derived.
+		# Finally, set the status to 'ordered'.
 		self.cur.execute("""
 			UPDATE `order`
-			SET	total_price = 44.59,
-				total_weight = 4.2,
-				status = 'ordered'
+			SET status = 'ordered'
 			WHERE order_id = LAST_INSERT_ID();
 			""")
 
 def test_create_item_with_variants(db: Database) -> int:
 	i = db.create_catalog_item("Kent Shirt", "A shirt with the KSU logo", 'shirt')
-	print(i)
 	db.create_catalog_item_variant(i, 0, 'M', 'Blue', 19.95, 1.07)
 	db.create_catalog_item_variant(i, 1, 'L', 'Green', 20.95, 1.24)
 	db.create_catalog_item_variant(i, 2, 'XS', 'Green', 18.65, 0.92)
 	return i
 
 def test_shop_two_items_and_order(db: Database, customer_id, items):
-	db.add_to_cart(customer_id, items, 0)
-	db.add_to_cart(customer_id, items + 1, 2)
+	import random
+	db.add_to_cart(customer_id, random.choice(items), random.randint(0, 2))
+	db.add_to_cart(customer_id, random.choice(items), random.randint(0, 2))
 	db.place_order(customer_id)
 
 # def test_search_for_items(db: Database):
@@ -123,8 +139,8 @@ def test_shop_two_items_and_order(db: Database, customer_id, items):
 
 def run_tests(db: Database):
 	db.cur.execute("""
-		INSERT INTO customer (customer_id, first_name, middle_name, last_name, shipping_street_number, shipping_street_name, shipping_street_apt, shipping_city, shipping_state, shipping_zip, billing_street_number, billing_street_name, billing_street_apt, billing_city, billing_state, billing_zip, email, password, phone_number)
-		VALUES (1, 'jim', NULL, 'me', '123', 'amongst', NULL, 'kent', 'OH', '44240', '123', 'amongst', NULL, 'kent', 'OH', '44240', 'jim@cool.site', 'hunter2', '3304206969')
+		INSERT INTO customer (first_name, middle_name, last_name, shipping_street_number, shipping_street_name, shipping_street_apt, shipping_city, shipping_state, shipping_zip, billing_street_number, billing_street_name, billing_street_apt, billing_city, billing_state, billing_zip, email, password, phone_number)
+		VALUES ('jim', NULL, 'me', '123', 'among st', NULL, 'Akron', 'OH', '44240', '123', 'among st', NULL, 'Akron', 'OH', '44240', 'jim@cool.tld', 'hunter2', '3304206969')
 	""")
 	guy = db.cur.lastrowid
 	print(f"made up a guy. {guy}")
@@ -133,7 +149,7 @@ def run_tests(db: Database):
 	item2 = test_create_item_with_variants(db)
 	print("created all sorts of items.")
 	
-	test_shop_two_items_and_order(db, guy, item1)
+	test_shop_two_items_and_order(db, guy, [item1, item2])
 	print("the guy bought two items and checked out.")
 
 try:
