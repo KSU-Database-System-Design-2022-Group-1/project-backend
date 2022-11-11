@@ -6,6 +6,20 @@ function sayThing {
 	printf "\033[32m%s\033[0m\n" "$1"
 }
 
+# Check if this environment has a command.
+function hasCommand {
+	command -v "$1" >/dev/null 2>&1
+}
+
+# Check if a process is running.
+function isRunning {
+	if hasCommand pgrep; then
+		pgrep -f "$1" >/dev/null 2>&1
+	else
+		ps | grep "$1" >/dev/null 2>&1
+	fi
+}
+
 # Only run if in root of Git repository.
 if [ ! -d .git ]; then
 	sayThing "\
@@ -17,14 +31,26 @@ fi
 if [ -s .mariadb_path ]; then # Is there a path override file?
 	# Read only the first line and trim its newline and trailing slash if present.
 	MARIADB_PATH=$(head -n 1 .mariadb_path | sed 's/\n$//; s/\/$//')
-	sayThing "\
-Read MariaDB path from .mariadb_path file.
-  $MARIADB_PATH"
-elif command -v mariadb >/dev/null 2>&1; then  # Is it in the system's PATH variable?
-	MARIADB_PATH=$(command -v mariadb | sed 's/\/mariadb$//')
+	
+	# Oh my god why did I go down this rabbit hole
+	if hasCommand cygpath; then
+		case $MARIADB_PATH in '~'*)
+			MARIADB_PATH="$HOME"$(echo "$MARIADB_PATH" | sed 's/~//') ;;
+		esac
+		MARIADB_PATH=$(cygpath -a "$MARIADB_PATH")
+		sayThing "Read MariaDB path from .mariadb_path file, and converted it."
+	else
+		sayThing "Read MariaDB path from .mariadb_path file."
+	fi
+	# Shell creators really do make up syntax every day
+	
+	# Print path after possibly reformatting.
+	sayThing "  $MARIADB_PATH"
+elif hasCommand mysql; then  # Is it in the system's PATH variable?
+	MARIADB_PATH=$(command -v mysql | sed 's/\/mysql$//')
 	echo "$MARIADB_PATH" > .mariadb_path
 	sayThing "\
-Automatically found this possible MariaDB installation:
+Automatically found this possible MySQL/MariaDB installation:
   $MARIADB_PATH
 Is that cool? If so, run this script again.
 If not, edit the .mariadb_path file that has been automatically created,
@@ -35,24 +61,11 @@ If you're on Windows, it should point to the /bin subfolder specifically."
 else # Otherwise, make the path override file.
 	sayThing "\
 Hey! Sorry, I couldn't find your MySQL/MariaDB installation automatically.
-I've created a .mariadb_path that you should put the path to your MariaDB install in.
+I've created a .mariadb_path file to put the path to your MariaDB install in.
 If you're on Windows, it should point to the /bin subfolder specifically."
 	touch .mariadb_path
 	exit 1
 fi
-
-# Oh my god why did I go down this rabbit hole
-if command -v cygpath >/dev/null 2>&1; then
-	case $MARIADB_PATH in '~'*)
-		MARIADB_PATH="$HOME"$(echo "$MARIADB_PATH" | sed 's/~//') ;;
-	esac
-	MARIADB_PATH=$(cygpath -a "$MARIADB_PATH")
-	
-	sayThing "\
-Reformatted path.
-  $MARIADB_PATH"
-fi
-# Shell creators really do make up syntax every day
 
 # I guess you can customize the port.
 # I don't know anything about this. Thanks.
@@ -103,7 +116,7 @@ if [ ! -f ./database/data/my.ini ]; then
 	
 	# Make the database, without registering a Windows service.
 	sayThing "Installing database to folders inside this project..."
-	$MARIADB_PATH/mysql_install_db -D -c my.ini
+	"$MARIADB_PATH"/mysql_install_db -D -c my.ini
 	# (It says "starting mysqld as process PID" but that's just temporary,
 	# probably for initializing. We'll still need to launch a proper daemon.)
 	
@@ -118,17 +131,17 @@ fi
 if [ ! -d ./database/data/kstores ]; then
 	sayThing "KStores database doesn't seem to exist! Creating from definition script..."
 	
-	if ps | grep "/mysqld"; then
+	if isRunning "/mysqld"; then
 		sayThing "An unrelated MySQL server appears to be running.
 	Check 'ps' (Linux) or Windows Task Manager's 'Details' tab."
 		exit 1
 	fi
 	
 	# Launch the server in the background,
-	$MARIADB_PATH/mysqld --basedir=./database/ --datadir=./database/data/ >/dev/null &
+	"$MARIADB_PATH"/mysqld --basedir=./database/ --datadir=./database/data/ >/dev/null &
 	
 	# Connect to it, and then run the definition script on it.
-	$MARIADB_PATH/mysql -u root -h localhost -P $MARIADB_PORT --show-warnings < ddl.sql
+	"$MARIADB_PATH"/mysql -u root -h localhost -P $MARIADB_PORT --show-warnings < ddl.sql
 	THE_SETUP_RESULT=$?
 	
 	# Once the definition script is done,
@@ -155,16 +168,24 @@ if [ ! -d ./database/data/kstores ]; then
 	fi
 fi
 
-# Launch the database server, without registering a Windows service.
-sayThing "Running MySQL Server at port $MARIADB_PORT! Press Ctrl+C in terminal to stop."
-$MARIADB_PATH/mysqld --basedir=./database/ --datadir=./database/data/ --console
-
-# # Launch the monitor.
-# sayThing "Connecting to MySQL Server at port $MARIADB_PORT. To exit, type 'quit'."
-# $MARIADB_PATH/mysql -u root -h localhost -P $MARIADB_PORT kstores --show-warnings
-
-# Just staying vigilant.
-if ps | grep "/mysqld"; then
-	sayThing "Warning: somewhere on your computer, MySQL is still running.
-Check 'ps' (Linux) or Windows Task Manager's 'Details' tab."
+if [ "$#" -gt 0 ] && [ "$1" = "monitor" ]; then
+	# Only attempt to run monitor if MySQL is running locally.
+	if isRunning "/mysqld"; then
+		# Launch the monitor.
+		sayThing "Connecting to MySQL Server at port $MARIADB_PORT. To exit, type 'quit'."
+		"$MARIADB_PATH"/mysql -u root -h localhost -P $MARIADB_PORT -D kstores --show-warnings
+	else
+		sayThing "No MySQL server is running."
+		exit 1
+	fi
+else
+	# Launch the database server, without registering a Windows service.
+	sayThing "Running MySQL Server at port $MARIADB_PORT! Press Ctrl+C in terminal to stop."
+	"$MARIADB_PATH"/mysqld --basedir=./database/ --datadir=./database/data/ --console
+	
+	# Just staying vigilant.
+	if isRunning "/mysqld"; then
+		sayThing "Warning: somewhere on your computer, MySQL is still running.
+	Check 'ps' (Linux) or Windows Task Manager's 'Details' tab."
+	fi
 fi
