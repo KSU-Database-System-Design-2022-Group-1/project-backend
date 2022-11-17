@@ -140,7 +140,7 @@ class Database:
 			VALUES (?, ?, ?, ?);
 			""", (customer_id, item_id, variant_id, quantity))
 	
-	def place_order(self, customer_id: int):
+	def place_order(self, customer_id: int) -> int:
 		# Calculate total price and weight of shopping cart items.
 		(price, weight) = self.get_cart_info(customer_id)
 		
@@ -152,17 +152,18 @@ class Database:
 		# One of the default fields will be order_id,
 		# the primary key which is auto-incremented.
 		
-		# Thanks to LAST_INSERT_ID, we don't need to fetch
-		# the auto-incremented order_id, but if we needed:
-		#   order_id = cur.lastrowid
+		# We could just use LAST_INSERT_ID for everything,
+		# but it'd be useful to return the new order_id to
+		# Python so future queries can more easily use it:
+		order_id = cur.lastrowid
 		
 		# Insert items from shopping cart into newly-created order.
 		self.cur.execute("""
 			INSERT INTO order_item
-			SELECT LAST_INSERT_ID() AS order_id, item_id, variant_id, quantity
+			SELECT ? AS order_id, item_id, variant_id, quantity
 			FROM shopping_cart
 			WHERE customer_id = ?;
-			""", (customer_id,))
+			""", (order_id, customer_id))
 		
 		# TODO: decrement stock for items in shopping cart
 		# (but what if we take too many items?)
@@ -179,8 +180,11 @@ class Database:
 		self.cur.execute("""
 			UPDATE `order`
 			SET status = 'ordered'
-			WHERE order_id = LAST_INSERT_ID();
-			""")
+			WHERE order_id = ?;
+			""", (order_id,))
+		
+		# Return the new order's order_id.
+		return order_id
 
 def test_create_item_with_variants(db: Database) -> int:
 	return db.create_catalog_item("Kent Shirt", "A shirt with the KSU logo", 'shirt', [
