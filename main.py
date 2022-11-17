@@ -26,47 +26,108 @@ class Database:
 		# otherwise, returns (price, weight)
 		return self.cur.fetchone()
 	
+	# # Automatically handled in item creation functions,
+	# # should not be exposed to API users.
+	# def get_next_variant_id(self, item_id) -> int:
+	# 	self.cur.execute("""
+	# 		SELECT COALESCE(MAX(variant_id)+1, 0)
+	# 		FROM variant_catalog
+	# 		WHERE item_id = ?;
+	# 		""", (item_id,))
+	# 	
+	# 	return self.cur.fetchone()
+	
 	# Creates a catalog item and returns its new item_id.
 	def create_catalog_item(
 		self,
-		name: str, description: str, category: str
+		name: str, description: str, category: str,
+		variants: list[tuple[ str, str, float, float, int ]],
 	) -> int:
 		self.cur.execute("""
 			INSERT INTO item_catalog (item_name, description, category, item_image)
 			VALUES (?, ?, ?, NULL);
 			""", (name, description, category))
 		
-		# Return auto-incrementing item_id
-		return self.cur.lastrowid
-	
-	# Creates a catalog item variant.
-	# You must come up with a new variant_id.
-	def create_catalog_item_variant(
-		self,
-		item_id: int, variant_id: int,
-		size: str, color: str,
-		price: float, weight: float,
-		stock: int = 1
-	):
-		self.cur.execute("""
+		# Save auto-incrementing item_id
+		item_id = self.cur.lastrowid
+		
+		next_variant_id = 1 # self.get_next_variant_id(item_id)
+		
+		variants_indexed = [ (item_id, variant_id) + variant
+			for (variant_id, variant)
+			in enumerate(variants, next_variant_id) ]
+		
+		self.cur.executemany("""
 			INSERT INTO variant_catalog (
 				item_id, variant_id,
 				size, color,
 				price, weight,
-				stock,
-				variant_image
-			) VALUES (
+				stock)
+			VALUES (
 				?, ?,
 				?, ?,
 				?, ?,
-				?,
-				NULL);
-			""", (
-				item_id, variant_id,
-				size, color,
-				price, weight,
-				stock
-			))
+				?);
+			""", variants_indexed)
+		
+		# Return the auto-generated item_id
+		return item_id
+	
+	# Creates a single catalog item variant.
+	# Don't use unless you really have to.
+	def create_catalog_item_variant(
+		self,
+		item_id: int, variant_id: int | None,
+		size: str, color: str,
+		price: float, weight: float,
+		stock: int = 1,
+	):
+		params = (
+			item_id, variant_id,
+			size, color,
+			price, weight,
+			stock
+		)
+		
+		# TODO: looks gross
+		
+		if variant_id is None:
+			params = (item_id, item_id) + params[2:]
+			
+			# Hopefully will execute atomically:
+			self.cur.execute("""
+				INSERT INTO variant_catalog (
+					item_id, variant_id,
+					size, color,
+					price, weight,
+					stock,
+					variant_image
+				) VALUES (
+					?,  (
+						SELECT COALESCE(MAX(tmp.variant_id) + 1, 0)
+						FROM variant_catalog AS tmp
+						WHERE tmp.item_id = ?
+					),
+					?, ?,
+					?, ?,
+					?,
+					NULL);
+				""", params)
+		else:
+			self.cur.execute("""
+				INSERT INTO variant_catalog (
+					item_id, variant_id,
+					size, color,
+					price, weight,
+					stock,
+					variant_image
+				) VALUES (
+					?, ?,
+					?, ?,
+					?, ?,
+					?,
+					NULL);
+				""", params)
 	
 	def add_to_cart(
 		self,
@@ -122,17 +183,20 @@ class Database:
 			""")
 
 def test_create_item_with_variants(db: Database) -> int:
-	i = db.create_catalog_item("Kent Shirt", "A shirt with the KSU logo", 'shirt')
-	db.create_catalog_item_variant(i, 0, 'M', 'Blue', 19.95, 1.07)
-	db.create_catalog_item_variant(i, 1, 'L', 'Green', 20.95, 1.24)
-	db.create_catalog_item_variant(i, 2, 'XS', 'Green', 18.65, 0.92)
-	return i
+	return db.create_catalog_item("Kent Shirt", "A shirt with the KSU logo", 'shirt', [
+		('M', 'Blue', 19.95, 1.07, 1),
+		('L', 'Green', 20.95, 1.24, 1),
+		('XS', 'Green', 18.65, 0.92, 1)
+	])
 
 def test_shop_two_items_and_order(db: Database, customer_id, items):
 	import random
-	db.add_to_cart(customer_id, random.choice(items), random.randint(0, 2))
-	db.add_to_cart(customer_id, random.choice(items), random.randint(0, 2))
+	db.add_to_cart(customer_id, random.choice(items), random.randint(1, 3))
 	db.place_order(customer_id)
+
+def test_create_more_variants_afterward(db: Database, item_id: int):
+	db.create_catalog_item_variant(item_id, None, 'XL', 'Solid Gold', 99.99, 120.0, 1)
+	db.create_catalog_item_variant(item_id, 99, 'S', 'NFT', 990.99, 0.0, 1)
 
 # def test_search_for_items(db: Database):
 # 	db
@@ -147,6 +211,7 @@ def run_tests(db: Database):
 	
 	item1 = test_create_item_with_variants(db)
 	item2 = test_create_item_with_variants(db)
+	test_create_more_variants_afterward(db, item2)
 	print("created all sorts of items.")
 	
 	test_shop_two_items_and_order(db, guy, [item1, item2])
@@ -181,5 +246,5 @@ try:
 	conn.close()
 	
 except mariadb.Error as e:
-	print(f"Error connecting to the database: {e}")
+	print(f"Database Error:\n{e}")
 	sys.exit(1)
