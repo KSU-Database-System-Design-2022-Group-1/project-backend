@@ -140,9 +140,13 @@ if [ ! -d ./database/data/kstores ]; then
 	# Launch the server in the background,
 	"$MARIADB_PATH"/mysqld --basedir=./database/ --datadir=./database/data/ >/dev/null &
 	
+	set +e # (Disarm "quit script if non-zero exit status" flag for following command.)
+	
 	# Connect to it, and then run the definition script on it.
 	"$MARIADB_PATH"/mysql -u root -h localhost -P $MARIADB_PORT --show-warnings < ddl.sql
 	THE_SETUP_RESULT=$?
+	
+	set -e # (Re-arm "quit script if non-zero exit status" flag from previous command.)
 	
 	# Once the definition script is done,
 	kill -s SIGINT $! # kill the server process.
