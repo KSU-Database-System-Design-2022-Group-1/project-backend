@@ -1,4 +1,4 @@
-BEGIN;
+START TRANSACTION;
 
 -- DESTRUCTIVE! This will initialize things!
 -- (But since it's inside a transaction,

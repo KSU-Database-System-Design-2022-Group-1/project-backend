@@ -20,6 +20,11 @@ function isRunning {
 	fi
 }
 
+# Count files in folder
+function countFiles {
+	find "$1" -type f -printf x | wc -c
+}
+
 # Only run if in root of Git repository.
 if [ ! -d .git ]; then
 	sayThing "\
@@ -127,9 +132,12 @@ if [ ! -f ./database/data/my.ini ]; then
 	sayThing "Done setting this up! You shouldn't see this again, unless you delete the /database/ folder."
 fi
 
-# Run the definition script if kstores isn't present 
-if [ ! -d ./database/data/kstores ]; then
-	sayThing "KStores database doesn't seem to exist! Creating from definition script..."
+# Run the definition script if kstores isn't completely present.
+# (If it has only one file, it's probably not valid. It typically has around 15 files.)
+if [ ! -d ./database/data/kstores ] || [ "$(countFiles ./database/data/kstores)" -le 1 ]; then
+	sayThing "\
+KStores database doesn't seem to exist or is invalid!
+Creating from the 'ddl.sql' definition script..."
 	
 	if isRunning "/mysqld"; then
 		sayThing "An unrelated MySQL server appears to be running.
@@ -166,7 +174,7 @@ if [ ! -d ./database/data/kstores ]; then
 	# Seeing the server start up 3 times in a row for 3 different steps of initialization
 	# feels slightly bad. But if it works and it only does it once, that's probably fine.
 	
-	if [ ! -d ./database/data/kstores ]; then
+	if [ ! -d ./database/data/kstores ] || [ "$(countFiles ./database/data/kstores)" -le 1 ]; then
 		sayThing "Hmm. MySQL exited fine, but I'm not seeing the 'kstores' database anywhere."
 		exit 1
 	fi
