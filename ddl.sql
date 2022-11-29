@@ -8,6 +8,19 @@ DROP DATABASE IF EXISTS kstores;
 CREATE DATABASE kstores;
 USE kstores;
 
+CREATE TABLE `address` (
+	address_id INT AUTO_INCREMENT NOT NULL,
+	
+	street_number VARCHAR(5) NOT NULL,
+	street_name VARCHAR(25) NOT NULL,
+	street_apt VARCHAR(25),
+	city VARCHAR(40) NOT NULL,
+	state CHAR(2) NOT NULL,
+	zip INT NOT NULL,
+	
+	PRIMARY KEY (address_id)
+);
+
 CREATE TABLE customer (
 	customer_id INT AUTO_INCREMENT NOT NULL,
 	
@@ -15,32 +28,23 @@ CREATE TABLE customer (
 	middle_name VARCHAR(40),
 	last_name VARCHAR(40) NOT NULL,
 	
-	shipping_street_number VARCHAR(5),
-	shipping_street_name VARCHAR(25),
-	shipping_street_apt VARCHAR(25),
-	shipping_city VARCHAR(40),
-	shipping_state CHAR(2),
-	shipping_zip INT,
-	
-	billing_street_number VARCHAR(5),
-	billing_street_name VARCHAR(25),
-	billing_street_apt VARCHAR(25),
-	billing_city VARCHAR(40),
-	billing_state CHAR(2),
-	billing_zip INT,
+	shipping_address INT,
+	billing_address INT,
 	
 	email VARCHAR(80) NOT NULL,
 	password VARCHAR(64) NOT NULL,
 	
 	phone_number VARCHAR(10) NOT NULL,
 	
-	PRIMARY KEY (customer_id)
+	PRIMARY KEY (customer_id),
+	FOREIGN KEY `fk_customer_shipping_address` (shipping_address) REFERENCES `address` (address_id),
+	FOREIGN KEY `fk_customer_billing_address` (billing_address) REFERENCES `address` (address_id)
 );
 
 CREATE TABLE catalog_images (
 	image_id INT AUTO_INCREMENT NOT NULL,
 	
-	image BLOB,
+	image BLOB NOT NULL,
 	alt_text TINYTEXT,
 	
 	PRIMARY KEY (image_id)
@@ -58,7 +62,7 @@ CREATE TABLE item_catalog (
 	-- price_min -- get price of the least expensive variant
 	
 	PRIMARY KEY (item_id),
-	FOREIGN KEY (item_image) REFERENCES catalog_images (image_id)
+	FOREIGN KEY `fk_item_image` (item_image) REFERENCES catalog_images (image_id)
 );
 
 CREATE TABLE variant_catalog (
@@ -73,8 +77,8 @@ CREATE TABLE variant_catalog (
 	variant_image INT,
 	
 	PRIMARY KEY (item_id, variant_id),
-	FOREIGN KEY (item_id) REFERENCES item_catalog (item_id),
-	FOREIGN KEY (variant_image) REFERENCES catalog_images (image_id)
+	FOREIGN KEY `fk_variant_item` (item_id) REFERENCES item_catalog (item_id),
+	FOREIGN KEY `fk_variant_image` (variant_image) REFERENCES catalog_images (image_id)
 );
 
 CREATE TABLE shopping_cart (
@@ -85,14 +89,16 @@ CREATE TABLE shopping_cart (
 	quantity INT UNSIGNED NOT NULL,
 	
 	PRIMARY KEY (customer_id, item_id, variant_id),
-	FOREIGN KEY (customer_id) REFERENCES customer (customer_id),
-	FOREIGN KEY (item_id) REFERENCES item_catalog (item_id),
-	FOREIGN KEY (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
+	FOREIGN KEY `fk_cart_customer` (customer_id) REFERENCES customer (customer_id),
+	FOREIGN KEY `fk_cart_item` (item_id) REFERENCES item_catalog (item_id),
+	FOREIGN KEY `fk_cart_variant` (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
 );
 
 CREATE TABLE `order` (
 	order_id INT AUTO_INCREMENT NOT NULL,
 	customer_id INT NOT NULL,
+	
+	shipping_address INT NOT NULL,
 	
 	total_price DECIMAL(6,2) NOT NULL,
 	total_weight FLOAT NOT NULL,
@@ -103,7 +109,8 @@ CREATE TABLE `order` (
 	status ENUM('ordered', 'paid', 'shipped', 'delivered'),
 	
 	PRIMARY KEY (order_id),
-	FOREIGN KEY (customer_id) REFERENCES customer (customer_id)
+	FOREIGN KEY `fk_order_customer` (customer_id) REFERENCES customer (customer_id),
+	FOREIGN KEY `fk_order_shipping_address` (shipping_address) REFERENCES `address` (address_id)
 );
 
 CREATE TABLE order_item (
@@ -114,9 +121,9 @@ CREATE TABLE order_item (
 	quantity INT UNSIGNED NOT NULL,
 	
 	PRIMARY KEY (order_id, item_id, variant_id),
-	FOREIGN KEY (order_id) REFERENCES `order` (order_id),
-	FOREIGN KEY (item_id) REFERENCES item_catalog (item_id),
-	FOREIGN KEY (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
+	FOREIGN KEY `fk_order_item_order` (order_id) REFERENCES `order` (order_id),
+	FOREIGN KEY `fk_order_item_item` (item_id) REFERENCES item_catalog (item_id),
+	FOREIGN KEY `fk_order_item_variant` (item_id, variant_id) REFERENCES variant_catalog (item_id, variant_id)
 );
 
 COMMIT WORK;

@@ -103,7 +103,7 @@ class Database:
 					stock,
 					variant_image
 				) VALUES (
-					?,  (
+					?, (
 						SELECT COALESCE(MAX(tmp.variant_id) + 1, 0)
 						FROM variant_catalog AS tmp
 						WHERE tmp.item_id = ?
@@ -146,9 +146,22 @@ class Database:
 		
 		# Create a new order and fill it with info from the shopping cart.
 		self.cur.execute("""
-			INSERT INTO `order` (customer_id, total_price, total_weight, status)
-			VALUES (?, ?, ?, NULL);
-			""", (customer_id, price, weight))
+			INSERT INTO `order` (
+				customer_id,
+				shipping_address,
+				total_price, total_weight,
+				status
+			) VALUES (
+				?,
+				(
+					SELECT shipping_address
+					FROM customer AS tmp
+					WHERE tmp.customer_id = ?
+				),
+				?, ?,
+				NULL
+			);
+			""", (customer_id, customer_id, price, weight))
 		# One of the default fields will be order_id,
 		# the primary key which is auto-incremented.
 		
@@ -207,11 +220,38 @@ def test_create_more_variants_afterward(db: Database, item_id: int):
 
 def run_tests(db: Database):
 	db.cur.execute("""
-		INSERT INTO customer (first_name, middle_name, last_name, shipping_street_number, shipping_street_name, shipping_street_apt, shipping_city, shipping_state, shipping_zip, billing_street_number, billing_street_name, billing_street_apt, billing_city, billing_state, billing_zip, email, password, phone_number)
-		VALUES ('jim', NULL, 'me', '123', 'among st', NULL, 'Akron', 'OH', '44240', '123', 'among st', NULL, 'Akron', 'OH', '44240', 'jim@cool.tld', 'hunter2', '3304206969')
+		INSERT INTO customer (
+			first_name, middle_name, last_name,
+			shipping_address, billing_address,
+			email, password, phone_number
+		)
+		VALUES (
+			'jim', NULL, 'me',
+			NULL, NULL,
+			'jim@cool.tld', 'hunter2', '3304206969'
+		)
 	""")
 	guy = db.cur.lastrowid
 	print(f"made up a guy. {guy}")
+	
+	db.cur.execute("""
+		INSERT INTO address (
+			street_number, street_name, street_apt,
+			city, state, zip
+		) VALUES (
+			'123', 'among st', NULL,
+			'Akron', 'OH', '44240'
+		)
+	""")
+	addr = db.cur.lastrowid
+	db.cur.execute("""
+		UPDATE customer
+		SET
+			shipping_address = ?,
+			billing_address = ?
+		WHERE customer_id = ?;
+	""", (addr, addr, guy))
+	print("He has an Address and a Phone Number.")
 	
 	item1 = test_create_item_with_variants(db)
 	item2 = test_create_item_with_variants(db)
@@ -241,7 +281,7 @@ try:
 	
 	# Helper Object
 	db = Database(cur)
-	run_tests(db)
+	# run_tests(db)
 	
 	# Save everything you've done, then
 	# close connection to the database.
