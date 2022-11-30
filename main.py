@@ -1,15 +1,15 @@
 import sys
-import json
+from typing import Any, Dict, List, Tuple
 
-from mariadb import Cursor, Connection, mariadb
-import flask
+from mariadb import mariadb, Cursor, Connection
+from flask import Flask, request
 
 import actions
 
 cur, conn = None, None
-app = flask.Flask(__name__)
+app = Flask(__name__)
 
-app.config["DEBUG"] = True # it's how it is
+app.config["DEBUG"] = True
 
 db_config = {
 	'host': 'localhost',
@@ -18,15 +18,43 @@ db_config = {
 	'database': 'kstores'
 }
 
+@app.route("/cart/list", methods=['GET'])
+def list():
+	customer_id = request.form.get('customer_id')
+	if customer_id and customer_id.isnumeric():
+		customer_id = int(customer_id)
+		return { 'success': True, 'items': actions.get_cart(cur, customer_id) }
+	else:
+		return { 'success': False, 'message': "Supply a valid customer_id." }
+
 @app.route("/cart/checkout", methods=['POST'])
 def checkout():
-	return json.dumps({ 'success': True, 'order_id': actions.place_order(cur, 11) })
+	try:
+		return { 'success': True, 'order_id': actions.place_order(cur, 11) }
+	except:
+		return { 'success': False, 'message': "Server error." }
+
+@app.route("/echo", methods=['GET', 'POST'])
+def aaa():
+	if request.method == 'GET':
+		return """<!DOCTYPE html>
+<form method=post>
+	<input type=text name=abc placeholder="Hi!" />
+	<input type=submit />
+</form>"""
+	return {
+		'form': request.form,
+		'url': request.args,
+		'cookies': request.cookies
+	}
 
 # https://mariadb.com/docs/connect/programming-languages/python/
 
 # More convenient query format. Emulates Python formatting with named args.
 # Replace your ?s with {}s to make my life easier.
-def convenient(query: str, *ordered_args: list[type], **named_args: dict[str, type]) -> tuple[str, list[type]]:
+def convenient(
+	query: str, *ordered_args: List[type], **named_args: Dict[str, Any]
+) -> Tuple[str, List[Any]]:
 	class IDunno():
 		def __init__(cur): pass
 		def __getitem__(cur, _) -> str: return '?'
@@ -69,10 +97,6 @@ try:
 	
 	# Make a cursor into the database.
 	cur = conn.cursor()
-	
-	if not isinstance(cur, Cursor):
-		print("Cursor :(")
-		raise Exception
 	
 	# Run the server
 	app.run()

@@ -1,7 +1,20 @@
-from mariadb import Cursor, Connection, mariadb
+from typing import Any, Dict, List, Tuple
+
+from mariadb import Cursor
+
+# Returns the items in the cart.
+def get_cart(cur: Cursor, customer_id: int):
+	cur.execute("""
+		SELECT item_id, variant_id, quantity
+		FROM shopping_cart WHERE customer_id = ?;
+		""", (customer_id,))
+	return [{
+		'id': { 'item': item_id, 'variant': variant_id },
+		'quantity': quantity
+	} for (item_id, variant_id, quantity) in cur]
 
 # Returns the total price and weight (in a tuple, in that order) of the cart.
-def get_cart_info(cur, customer_id: int):
+def get_cart_info(cur: Cursor, customer_id: int):
 	cur.execute("""
 		SELECT COALESCE(SUM(price), 0), COALESCE(SUM(weight), 0)
 		FROM shopping_cart JOIN variant_catalog USING (item_id, variant_id)
@@ -14,9 +27,9 @@ def get_cart_info(cur, customer_id: int):
 
 # Creates a catalog item and returns its new item_id.
 def create_catalog_item(
-	cur,
+	cur: Cursor,
 	name: str, description: str, category: str,
-	variants: list[tuple[ str, str, float, float, int ]],
+	variants: List[Tuple[ str, str, float, float, int ]],
 ) -> int:
 	cur.execute("""
 		INSERT INTO item_catalog (item_name, description, category, item_image)
@@ -52,7 +65,7 @@ def create_catalog_item(
 # Creates a single catalog item variant.
 # Don't use unless you really have to.
 def create_catalog_item_variant(
-	cur,
+	cur: Cursor,
 	item_id: int, variant_id: int | None,
 	size: str, color: str,
 	price: float, weight: float,
@@ -104,17 +117,18 @@ def create_catalog_item_variant(
 			""", params)
 
 def add_to_cart(
-	cur,
+	cur: Cursor,
 	customer_id: int,
 	item_id: int, variant_id: int,
 	quantity: int = 1
 ):
 	cur.execute("""
-		INSERT INTO shopping_cart (customer_id, item_id, variant_id, quantity)
-		VALUES (?, ?, ?, ?);
+		INSERT INTO shopping_cart (
+			customer_id, item_id, variant_id, quantity
+		) VALUES (?, ?, ?, ?);
 		""", (customer_id, item_id, variant_id, quantity))
 
-def place_order(cur, customer_id: int) -> int:
+def place_order(cur: Cursor, customer_id: int) -> int:
 	# Calculate total price and weight of shopping cart items.
 	(price, weight) = get_cart_info(cur, customer_id)
 	
@@ -158,11 +172,11 @@ def place_order(cur, customer_id: int) -> int:
 	# Bob has in his cart before he checks out his cart?)
 	# TODO: lock / unlock variant table to set stock
 	
-	# # Remove them from shopping cart now that they're copied over.
-	# cur.execute("""
-	# 	DELETE FROM shopping_cart
-	# 	WHERE customer_id = ?;
-	# 	""", (customer_id,))
+	# Remove them from shopping cart now that they're copied over.
+	cur.execute("""
+		DELETE FROM shopping_cart
+		WHERE customer_id = ?;
+		""", (customer_id,))
 	
 	# Finally, set the status to 'ordered'.
 	cur.execute("""

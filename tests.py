@@ -1,6 +1,8 @@
 import sys
+from typing import Any, Dict, List, Tuple
 
 from mariadb import Cursor, Connection, mariadb
+
 import actions
 
 def test_create_item_with_variants(cur: Cursor) -> int:
@@ -10,10 +12,10 @@ def test_create_item_with_variants(cur: Cursor) -> int:
 		('XS', 'Green', 18.65, 0.92, 1)
 	])
 
-def test_shop_two_items_and_order(cur: Cursor, customer_id, items):
+def test_shop_two_items_and_order(cur: Cursor, customer_id: int, items: List[int]):
 	import random
 	actions.add_to_cart(cur, customer_id, random.choice(items), random.randint(1, 3))
-	# actions.place_order(cur, customer_id)
+	actions.place_order(cur, customer_id)
 
 def test_create_more_variants_afterward(cur: Cursor, item_id: int):
 	actions.create_catalog_item_variant(cur, item_id, None, 'XL', 'Solid Gold', 99.99, 120.0, 1)
@@ -78,10 +80,6 @@ if __name__ == '__main__':
 		
 		# Make a cursor into the database.
 		cur = conn.cursor()
-		
-		if not isinstance(cur, Cursor):
-			print("Cursor :(")
-			raise Exception
 		
 		# Helper Object
 		run_tests(cur)
