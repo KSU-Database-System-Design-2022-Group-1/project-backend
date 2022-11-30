@@ -1,3 +1,4 @@
 /database/
 .mariadb_path
 .vscode/
+__pycache__/
