@@ -1,7 +1,7 @@
-import sys
+import sys, os
 
 from mariadb import mariadb, Cursor, Connection
-from flask import Flask, request
+from flask import Flask, request, send_file
 
 import actions
 from decorators import catch_exception, fill_dict_from_form, fill_params_from_form
@@ -12,6 +12,9 @@ cur: Cursor = None # type: ignore
 conn: Connection = None # type: ignore
 
 app = Flask(__name__)
+
+if not os.path.exists("./images"):
+	os.mkdir("./images")
 
 app.config["DEBUG"] = True
 
@@ -76,6 +79,23 @@ def create_customer(form):
 def catalog_list(form):
 	return { 'items': actions.search_catalog( cur, **form ) }
 
+@app.route("/image/create", methods=['POST'])
+@catch_exception
+def create_image():
+	image_req = request.files['image']
+	image_id = actions.create_image(cur, image_req.mimetype, request.form.get('alt_text'))
+	image_req.save(f"./images/{image_id}")
+	return { 'image': image_id }
+
+@app.route("/image/get", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def get_image(image: int):
+	print(image)
+	(mime_type, _) = actions.get_image_info(cur, image)
+	print("mime_type", mime_type)
+	return send_file(f"./images/{image}", mimetype=mime_type)
+
 @app.route("/cart/list", methods=['GET'])
 @catch_exception
 @fill_params_from_form
@@ -108,7 +128,10 @@ def aaa():
 <form>
 	<input formaction="/catalog/search" formmethod=get type=submit value="List Catalog Items" />
 	<input formaction="/catalog/search" formmethod=get type=submit value="List Catalog Items" />
-	<input formaction="/catalog/search" formmethod=get type=submit value="List Catalog Items" />
+</form>
+<form action="/image/create" method=post enctype="multipart/form-data">
+	<input type=file name=image /><label for=image>New Image</label>
+	<input type=submit value="Upload" />
 </form>
 <form>
 	<input type=number name=customer_id value=1 />

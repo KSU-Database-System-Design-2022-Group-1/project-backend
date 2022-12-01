@@ -44,7 +44,7 @@ CREATE TABLE customer (
 CREATE TABLE catalog_images (
 	image_id INT AUTO_INCREMENT NOT NULL,
 	
-	image BLOB NOT NULL,
+	mime_type VARCHAR(64),
 	alt_text TINYTEXT,
 	
 	PRIMARY KEY (image_id)

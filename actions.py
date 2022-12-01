@@ -63,7 +63,7 @@ def create_address(
 		street_number, street_name, street_apt,
 		city, state, zip
 	))
-	existing_address: int | None = cur.fetchall()[0][0]
+	existing_address: int | None = cur.fetchone()[0]
 	
 	if existing_address is None:
 		cur.execute("""
@@ -158,6 +158,23 @@ def search_catalog(cur: Cursor, **filters):
 		price, weight,
 		image_id
 	) in cur]
+
+def create_image(cur: Cursor, mime_type: str, alt_text: str | None = None) -> int:
+	cur.execute("""
+		INSERT INTO catalog_images (
+			mime_type, alt_text
+		) VALUES (?, ?);
+		""", (mime_type, alt_text))
+	return cur.lastrowid # type: ignore
+
+def get_image_info(cur: Cursor, image_id: int) -> (str, str):
+	cur.execute("""
+		SELECT mime_type, alt_text
+		FROM catalog_images
+		WHERE image_id = ?;
+		""", (image_id,))
+	(mime_type, alt_text) = cur.fetchone()
+	return (mime_type, alt_text)
 
 # Returns the items in the cart.
 def get_cart(cur: Cursor, customer_id: int):

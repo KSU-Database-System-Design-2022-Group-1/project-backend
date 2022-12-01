@@ -9,9 +9,13 @@ def catch_exception(fn):
 	@wraps(fn)
 	def inner():
 		try:
-			return { 'success': True, **fn() }
+			r = fn()
+			if isinstance(r, dict):
+				return { 'success': True, **r }, 200
+			else:
+				return r, 200
 		except Exception as e:
-			return { 'success': False, 'error': type(e).__name__, 'message': str(e) }
+			return { 'success': False, 'error': type(e).__name__, 'message': str(e) }, 500
 	return inner
 
 # Provides the function with a "form" dictionary containing all the
@@ -58,3 +62,7 @@ def fill_params_from_form(fn):
 				args[param] = request.form.get(param, type=ty)
 		return fn(**args)
 	return inner
+
+# TODO: it'd be nice if these handled optionals and raised an error if they were absent.
+#  it's not a requirement. our frontend is in our control, so we can simply check these
+#  frontend-side. also, most actions will raise an SQL error if they're missing an arg.
