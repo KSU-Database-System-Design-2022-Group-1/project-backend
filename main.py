@@ -91,9 +91,7 @@ def create_image():
 @catch_exception
 @fill_params_from_form
 def get_image(image: int):
-	print(image)
 	(mime_type, _) = actions.get_image_info(cur, image)
-	print("mime_type", mime_type)
 	return send_file(f"./images/{image}", mimetype=mime_type)
 
 @app.route("/cart/list", methods=['GET'])
