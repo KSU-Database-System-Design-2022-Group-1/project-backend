@@ -31,11 +31,13 @@ def search_catalog(cur: Cursor, **filters):
 	# This is a list that maps a filter name to an SQL query,
 	# and provides a function to turn an argument given with
 	# the filter name into something that an SQL query can use.
-	filters_map: dict[str, tuple[str, Callable[[Any], str | int | None]]] = {
+	filters_map: dict[str, tuple[str, Callable[[Any], Any | None]]] = {
 		'name':     ("item_name LIKE ?", lambda p: f"%{p}%"),
 		'category': ("category = ?",     lambda p: str(p)),
 		'size':     ("size = ?",         lambda p: p if p in sizes else None),
 		'color':    ("LOWER(color) = ?", lambda p: str(p).lower()),
+		'minprice': ("? <= price",       lambda p: float(p)),
+		'maxprice': ("price <= ?",       lambda p: float(p)),
 		'instock':  ("SIGN(stock) = ?",  lambda p: int(bool(p))),
 	}
 	
