@@ -5,6 +5,81 @@ from mariadb import Cursor
 
 sizes = ['XS', 'S', 'M', 'L', 'XL']
 
+# Check if user's email/password pair is valid.
+def check_login(cur: Cursor, email: str, password: str) -> bool:
+	cur.execute("""
+		SELECT COUNT(*)
+		FROM accounts
+		WHERE email = ?
+		AND password = ?;
+	""", (email, password))
+	return bool(cur.fetchall()[0][0])
+
+# Create a new customer with no set addresses.
+def create_customer(
+	cur: Cursor,
+	first_name: str, middle_name: str, last_name: str,
+	email: str, password: str,
+	phone_number: str,
+	shipping_addr: int | None = None,
+	billing_addr: int | None = None
+) -> int:
+	cur.execute("""
+		INSERT INTO customer (
+			first_name, middle_name, last_name,
+			shipping_address, billing_address,
+			email, password,
+			phone_number
+		) VALUES (
+			?, ?, ?,
+			?, ?,
+			?, ?,
+			?
+		)
+	""", (
+		first_name, middle_name, last_name,
+		shipping_addr, billing_addr,
+		email, password,
+		phone_number
+	))
+	return cur.lastrowid # type: ignore
+
+# Create a new address.
+# (May return existing address_ids if they match.)
+def create_address(
+	cur: Cursor,
+	street_number: str, street_name: str, street_apt: str | None,
+	city: str, state: str, zip: int
+) -> int:
+	cur.execute("""
+		SELECT MIN(address_id)
+		FROM address
+		WHERE street_number = ?
+		AND	street_name = ?
+		AND street_apt = ?
+		AND city = ? AND state = ?
+		AND zip = ?;
+	""", (
+		street_number, street_name, street_apt,
+		city, state, zip
+	))
+	existing_address: int | None = cur.fetchall()[0][0]
+	
+	if existing_address is None:
+		cur.execute("""
+			INSERT INTO address (
+				street_number, street_name,
+				street_apt,
+				city, state, zip
+			) VALUES (?, ?, ?, ?, ?, ?);
+		""", (
+			street_number, street_name, street_apt,
+			city, state, zip
+		))
+		return cur.lastrowid # type: ignore
+	else:
+		return existing_address # type: ignore
+
 # Fancy search function.
 # Set keyword args to add different types of filters.
 # It'll construct a query using all of them.
@@ -31,7 +106,7 @@ def search_catalog(cur: Cursor, **filters):
 	# This is a list that maps a filter name to an SQL query,
 	# and provides a function to turn an argument given with
 	# the filter name into something that an SQL query can use.
-	filters_map: dict[str, tuple[str, Callable[[Any], Any | None]]] = {
+	filters_map: dict[str, tuple[str, Callable[[Any], Any]]] = {
 		'name':     ("item_name LIKE ?", lambda p: f"%{p}%"),
 		'category': ("category = ?",     lambda p: str(p)),
 		'size':     ("size = ?",         lambda p: p if p in sizes else None),

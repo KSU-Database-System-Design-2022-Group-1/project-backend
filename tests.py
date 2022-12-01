@@ -31,7 +31,7 @@ def run_tests(cur: Cursor):
 			'jim', NULL, 'me',
 			NULL, NULL,
 			'jim@cool.tld', 'hunter2', '3304206969'
-		)
+		);
 	""")
 	guy: int = cur.lastrowid # type: ignore
 	print(f"made up a guy. {guy}")
@@ -43,7 +43,7 @@ def run_tests(cur: Cursor):
 		) VALUES (
 			'123', 'among st', NULL,
 			'Akron', 'OH', '44240'
-		)
+		);
 	""")
 	addr: int = cur.lastrowid # type: ignore
 	cur.execute("""

@@ -1,17 +1,20 @@
 import sys
 from functools import wraps
-import inspect
 
+import inspect
 from typing import Any
-from collections.abc import Callable
-from types import GenericAlias
+from types import GenericAlias, NoneType
 
 from mariadb import mariadb, Cursor, Connection
 from flask import Flask, request
 
 import actions
 
-cur, conn = None, None
+# FIXME: mariadb connection only has threadsafety of 1..
+# pool: ConnectionPool = None # type: ignore
+cur: Cursor = None # type: ignore
+conn: Connection = None # type: ignore
+
 app = Flask(__name__)
 
 app.config["DEBUG"] = True
@@ -36,7 +39,7 @@ def catch_exception(fn):
 
 # Provides the function with a "form" dictionary containing all the
 # keys specified in `types`, converted to their corresponding type value.
-def fill_dict_from_form(types: dict[str, Callable[[str], Any]]):
+def fill_dict_from_form(types: dict[str, type]):
 	def inner_decorator(fn):
 		@wraps(fn)
 		def inner():
@@ -80,6 +83,46 @@ def fill_params_from_form(fn):
 	return inner
 
 # ROUTES
+
+@app.route("/customer/signup", methods=['POST'])
+@catch_exception
+@fill_dict_from_form({
+	'first_name': str, 'middle_name': str, 'last_name': str,
+	'email': str, 'password': str,
+	'phone_number': str,
+	
+	'shipping_street_number': str, 'shipping_street_name': str,
+	'shipping_street_apt': str, # | None,
+	'shipping_city': str, 'shipping_state': str, 'shipping_zip': int,
+	
+	'billing_street_number': str, 'billing_street_name': str,
+	'billing_street_apt': str, # | None,
+	'billing_city': str, 'billing_state': str, 'billing_zip': int
+})
+def create_customer(form):
+	shipping_id = actions.create_address( cur,
+		form['shipping_street_number'], form['shipping_street_name'],
+		form['shipping_street_apt'],
+		form['shipping_city'], form['shipping_state'], form['shipping_zip']
+	)
+	billing_id = actions.create_address( cur,
+		form['billing_street_number'], form['billing_street_name'],
+		form['billing_street_apt'],
+		form['billing_city'], form['billing_state'], form['billing_zip']
+	)
+	customer_id = actions.create_customer( cur,
+		form['first_name'], form['middle_name'], form['last_name'],
+		form['email'], form['password'],
+		form['phone_number'],
+		shipping_id, billing_id
+	)
+	return {
+		'customer': customer_id,
+		'address': {
+			'shipping': shipping_id,
+			'billing': billing_id
+		}
+	}
 
 @app.route("/catalog/search", methods=['GET'])
 @catch_exception
@@ -140,8 +183,14 @@ def aaa():
 # https://mariadb.com/docs/connect/programming-languages/python/
 
 try:
+	# # Set up a connection pool
+	# pool = mariadb.ConnectionPool(
+	# 	pool_name = 'kstores_pool', pool_size = 4,
+	# 	**db_config
+	# )
+	
 	# Connect to the database.
-	conn = mariadb.connect(**db_config)
+	conn = mariadb.connect(**db_config) # type: ignore
 	
 	if not isinstance(conn, Connection):
 		print("Connection :(")
@@ -154,11 +203,11 @@ try:
 	app.run()
 	
 except mariadb.Error as e:
-	print(f"Database Error:\n{e}")
+	print(f"Database Error ({e.__name__}):\n{e}")
 	sys.exit(1)
 	
 except Exception as e:
-	print(e)
+	print(repr(e))
 	
 finally:
 	if isinstance(cur, Cursor):
