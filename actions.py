@@ -176,6 +176,49 @@ def get_image_info(cur: Cursor, image_id: int) -> (str, str):
 	(mime_type, alt_text) = cur.fetchone()
 	return (mime_type, alt_text)
 
+def get_item_info(cur: Cursor, item_id: int):
+	cur.execute("""
+		SELECT item_name, description, category, item_image
+		FROM item_catalog
+		WHERE item_id = ?;
+		""", (item_id,))
+	
+	if cur.rowcount < 1:
+		raise Exception("item not found")
+	
+	(item_name, description, category, item_image) = cur.fetchone()
+	
+	cur.execute("""
+		SELECT item_id, variant_id,
+			size, color,
+			price, weight,
+			COALESCE(variant_image, item_image) AS image_id
+		FROM variant_catalog JOIN item_catalog USING (item_id)
+		WHERE item_id = ?;
+		""", (item_id,))
+	variants = [{
+		'id': { 'item': item_id, 'variant': variant_id },
+		'size': size, # warning: nullable!
+		'color': color, # warning: nullable!
+		'price': price,
+		'weight': weight,
+		'image': image_id
+	} for (
+		item_id, variant_id,
+		size, color,
+		price, weight,
+		image_id
+	) in cur]
+	
+	return {
+		'id': item_id,
+		'name': item_name,
+		'description': description,
+		'category': category,
+		'image': item_image,
+		'variants': variants
+	}
+
 # Returns the items in the cart.
 def get_cart(cur: Cursor, customer_id: int):
 	cur.execute("""
