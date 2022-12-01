@@ -1,4 +1,5 @@
 import sys
+from functools import wraps
 from typing import Any, Dict, List, Tuple
 
 from mariadb import mariadb, Cursor, Connection
@@ -18,8 +19,25 @@ db_config = {
 	'database': 'kstores'
 }
 
+# TODO: extend to catch and explain database errors as well
+def catch_exception(fn, msg="Server error."):
+	@wraps(fn)
+	def inner():
+		try:
+			return { 'success': True, **fn() }
+		except:
+			return { 'success': False, 'message': msg }
+	return inner
+
+@app.route("/catalog/search", methods=['GET'])
+@catch_exception
+def catalog_list():
+	r = actions.search_catalog(cur, category="shirt", color=["red", 'blue'], instock=True)
+	return { 'items': r }
+
 @app.route("/cart/list", methods=['GET'])
-def list():
+@catch_exception
+def cart_list():
 	customer_id = request.form.get('customer_id')
 	if customer_id and customer_id.isnumeric():
 		customer_id = int(customer_id)
@@ -27,20 +45,43 @@ def list():
 	else:
 		return { 'success': False, 'message': "Supply a valid customer_id." }
 
+@app.route("/cart/add", methods=['POST'])
+@catch_exception
+def add_to_cart():
+	customer_id = request.form.get('customer_id')
+	if customer_id and customer_id.isnumeric():
+		customer_id = int(customer_id)
+		return { 'success': True, 'items': actions.add_to_cart(cur, customer_id,) }
+	else:
+		return { 'success': False, 'message': "Supply a valid customer_id." }
+
 @app.route("/cart/checkout", methods=['POST'])
+@catch_exception
 def checkout():
 	try:
 		return { 'success': True, 'order_id': actions.place_order(cur, 11) }
 	except:
 		return { 'success': False, 'message': "Server error." }
 
+# Secret zone where you can ???
 @app.route("/echo", methods=['GET', 'POST'])
 def aaa():
 	if request.method == 'GET':
 		return """<!DOCTYPE html>
+<style>form { margin: 1em; }</style>
 <form method=post>
 	<input type=text name=abc placeholder="Hi!" />
 	<input type=submit />
+</form>
+<hr />
+<form>
+	<input formaction="/catalog/search" formmethod=get type=submit value="List Catalog Items" />
+	<input formaction="/catalog/search" formmethod=get type=submit value="List Catalog Items" />
+	<input formaction="/catalog/search" formmethod=get type=submit value="List Catalog Items" />
+</form>
+<form>
+	<input type=number name=customer_id value=1 />
+	<input action="/cart/list" formmethod=get type=submit value="List Cart Items" />
 </form>"""
 	return {
 		'form': request.form,
@@ -49,43 +90,6 @@ def aaa():
 	}
 
 # https://mariadb.com/docs/connect/programming-languages/python/
-
-# More convenient query format. Emulates Python formatting with named args.
-# Replace your ?s with {}s to make my life easier.
-def convenient(
-	query: str, *ordered_args: List[type], **named_args: Dict[str, Any]
-) -> Tuple[str, List[Any]]:
-	class IDunno():
-		def __init__(cur): pass
-		def __getitem__(cur, _) -> str: return '?'
-	
-	class NoRightBracketException(Exception): pass
-	
-	args = []
-	next_ordered_index = 0
-	
-	other_bracket = 0
-	next_bracket = query.find('{')
-	while next_bracket >= 0:
-		other_bracket = query.find('}', next_bracket)
-		
-		if other_bracket < 0:
-			raise NoRightBracketException
-		
-		inner = query[(next_bracket + 1):other_bracket]
-		print(next_bracket, other_bracket, inner)
-		
-		if inner.isnumeric():
-			args.append(ordered_args[int(inner)])
-		elif inner:
-			args.append(named_args[inner])
-		else:
-			args.append(ordered_args[next_ordered_index])
-			next_ordered_index += 1
-		
-		next_bracket = query.find('{', other_bracket + 1)
-	
-	return (query.replace('{}','?').format_map(IDunno()), args)
 
 try:
 	# Connect to the database.

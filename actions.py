@@ -1,6 +1,83 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Callable
 
 from mariadb import Cursor
+
+sizes = ['XS', 'S', 'M', 'L', 'XL']
+
+# Fancy search function.
+# Set keyword args to add different types of filters.
+# It'll construct a query using all of them.
+def search_catalog(cur: Cursor, **filters):
+	# The **filters thing is a keyword argument list.
+	# It'll store a Dict[str, Any] containing any other
+	# keyword arguments you provide. Keyword arguments
+	# are those things like name="jim" and such.
+	# The great thing is that you aren't required to
+	# include all of them, so you can skip the checks
+	# you don't need.
+	
+	query = """
+SELECT
+	item_id, variant_id,
+	item_name, category,
+	size, color,
+	price, weight,
+	COALESCE(variant_image, item_image) AS image_id
+FROM variant_catalog JOIN item_catalog USING (item_id)
+WHERE 1=1""" # (dummy expression to require use of AND)
+	params = []
+	
+	# This is a list that maps a filter name to an SQL query,
+	# and provides a function to turn an argument given with
+	# the filter name into something that an SQL query can use.
+	filters_map: Dict[str, (str, Callable[[Any], str | int | None])] = {
+		'name':     ("item_name LIKE ?", lambda p: f"%{p}%"),
+		'category': ("category = ?",     lambda p: str(p)),
+		'size':     ("size = ?",         lambda p: p if p in sizes else None),
+		'color':    ("LOWER(color) = ?", lambda p: str(p).lower()),
+		'instock':  ("SIGN(stock) = ?",  lambda p: int(bool(p))),
+	}
+	
+	# Build query from keyword arguments.
+	for (f, p) in filters.items():
+		query += "\nAND "
+		
+		(part, param_fn) = filters_map[f]
+		
+		# If it's a list and not just one value,
+		if isinstance(p, list):
+			# the SQL query should check if it's any item in the list.
+			query_repeat = '\nOR '.join([part]*len(p))
+			query += f"({query_repeat})"
+			
+			# make a parameter out of each item in that list.
+			params += [param_fn(pi) for pi in p]
+		else:
+			# Otherwise, it's pretty simple!
+			query += part
+			params.append(param_fn(p))
+	query += ";"
+	
+	# Run query!
+	cur.execute(query, params)
+	
+	# TODO: kinda looks gross, but...
+	return [{
+		'id': { 'item': item_id, 'variant': variant_id },
+		'name': item_name,
+		'category': category,
+		'size': size or "No size",
+		'color': color or "Normal",
+		'price': price,
+		'weight': weight,
+		'image': image_id, # TODO: reformat to image url?
+	} for (
+		item_id, variant_id,
+		item_name, category,
+		size, color,
+		price, weight,
+		image_id
+	) in cur]
 
 # Returns the items in the cart.
 def get_cart(cur: Cursor, customer_id: int):
