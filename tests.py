@@ -1,5 +1,4 @@
 import sys
-from typing import Any, Dict, List, Tuple
 
 from mariadb import Cursor, Connection, mariadb
 
@@ -12,7 +11,7 @@ def test_create_item_with_variants(cur: Cursor) -> int:
 		('XS', 'Green', 18.65, 0.92, 1)
 	])
 
-def test_shop_two_items_and_order(cur: Cursor, customer_id: int, items: List[int]):
+def test_shop_two_items_and_order(cur: Cursor, customer_id: int, items: list[int]):
 	import random
 	actions.add_to_cart(cur, customer_id, random.choice(items), random.randint(1, 3))
 	actions.place_order(cur, customer_id)
@@ -34,7 +33,7 @@ def run_tests(cur: Cursor):
 			'jim@cool.tld', 'hunter2', '3304206969'
 		)
 	""")
-	guy = cur.lastrowid
+	guy: int = cur.lastrowid # type: ignore
 	print(f"made up a guy. {guy}")
 	
 	cur.execute("""
@@ -46,7 +45,7 @@ def run_tests(cur: Cursor):
 			'Akron', 'OH', '44240'
 		)
 	""")
-	addr = cur.lastrowid
+	addr: int = cur.lastrowid # type: ignore
 	cur.execute("""
 		UPDATE customer
 		SET

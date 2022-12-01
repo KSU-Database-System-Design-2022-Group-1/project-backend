@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Tuple, Callable
+from typing import Any
+from collections.abc import Callable
 
 from mariadb import Cursor
 
@@ -9,7 +10,7 @@ sizes = ['XS', 'S', 'M', 'L', 'XL']
 # It'll construct a query using all of them.
 def search_catalog(cur: Cursor, **filters):
 	# The **filters thing is a keyword argument list.
-	# It'll store a Dict[str, Any] containing any other
+	# It'll store a dict[str, Any] containing any other
 	# keyword arguments you provide. Keyword arguments
 	# are those things like name="jim" and such.
 	# The great thing is that you aren't required to
@@ -17,20 +18,20 @@ def search_catalog(cur: Cursor, **filters):
 	# you don't need.
 	
 	query = """
-SELECT
-	item_id, variant_id,
-	item_name, category,
-	size, color,
-	price, weight,
-	COALESCE(variant_image, item_image) AS image_id
-FROM variant_catalog JOIN item_catalog USING (item_id)
-WHERE 1=1""" # (dummy expression to require use of AND)
+		SELECT
+			item_id, variant_id,
+			item_name, category,
+			size, color,
+			price, weight,
+			COALESCE(variant_image, item_image) AS image_id
+		FROM variant_catalog JOIN item_catalog USING (item_id)
+		WHERE 1=1""" # (dummy expression to require use of AND)
 	params = []
 	
 	# This is a list that maps a filter name to an SQL query,
 	# and provides a function to turn an argument given with
 	# the filter name into something that an SQL query can use.
-	filters_map: Dict[str, (str, Callable[[Any], str | int | None])] = {
+	filters_map: dict[str, tuple[str, Callable[[Any], str | int | None]]] = {
 		'name':     ("item_name LIKE ?", lambda p: f"%{p}%"),
 		'category': ("category = ?",     lambda p: str(p)),
 		'size':     ("size = ?",         lambda p: p if p in sizes else None),
@@ -40,15 +41,18 @@ WHERE 1=1""" # (dummy expression to require use of AND)
 	
 	# Build query from keyword arguments.
 	for (f, p) in filters.items():
+		if not p:
+			continue
+		
 		query += "\nAND "
 		
 		(part, param_fn) = filters_map[f]
 		
 		# If it's a list and not just one value,
 		if isinstance(p, list):
-			# the SQL query should check if it's any item in the list.
-			query_repeat = '\nOR '.join([part]*len(p))
-			query += f"({query_repeat})"
+			# the SQL query should check if store items
+			# match any single value in the list.
+			query += '\nOR '.join([part]*len(p))
 			
 			# make a parameter out of each item in that list.
 			params += [param_fn(pi) for pi in p]
@@ -61,16 +65,15 @@ WHERE 1=1""" # (dummy expression to require use of AND)
 	# Run query!
 	cur.execute(query, params)
 	
-	# TODO: kinda looks gross, but...
 	return [{
 		'id': { 'item': item_id, 'variant': variant_id },
 		'name': item_name,
 		'category': category,
-		'size': size or "No size",
-		'color': color or "Normal",
+		'size': size, # warning: nullable!
+		'color': color, # warning: nullable!
 		'price': price,
 		'weight': weight,
-		'image': image_id, # TODO: reformat to image url?
+		'image': image_id, # -> links to image endpoint?
 	} for (
 		item_id, variant_id,
 		item_name, category,
@@ -106,7 +109,7 @@ def get_cart_info(cur: Cursor, customer_id: int):
 def create_catalog_item(
 	cur: Cursor,
 	name: str, description: str, category: str,
-	variants: List[Tuple[ str, str, float, float, int ]],
+	variants: list[tuple[ str, str, float, float, int ]],
 ) -> int:
 	cur.execute("""
 		INSERT INTO item_catalog (item_name, description, category, item_image)
@@ -137,7 +140,7 @@ def create_catalog_item(
 		""", variants_indexed)
 	
 	# Return the auto-generated item_id
-	return item_id
+	return item_id # type: ignore
 
 # Creates a single catalog item variant.
 # Don't use unless you really have to.
@@ -263,4 +266,4 @@ def place_order(cur: Cursor, customer_id: int) -> int:
 		""", (order_id,))
 	
 	# Return the new order's order_id.
-	return order_id
+	return order_id # type: ignore

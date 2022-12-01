@@ -1,6 +1,10 @@
 import sys
 from functools import wraps
-from typing import Any, Dict, List, Tuple
+import inspect
+
+from typing import Any
+from collections.abc import Callable
+from types import GenericAlias
 
 from mariadb import mariadb, Cursor, Connection
 from flask import Flask, request
@@ -19,49 +23,93 @@ db_config = {
 	'database': 'kstores'
 }
 
-# TODO: extend to catch and explain database errors as well
-def catch_exception(fn, msg="Server error."):
+# DECORATORS
+
+def catch_exception(fn):
 	@wraps(fn)
 	def inner():
 		try:
 			return { 'success': True, **fn() }
-		except:
-			return { 'success': False, 'message': msg }
+		except Exception as e:
+			return { 'success': False, 'error': type(e).__name__, 'message': str(e) }
 	return inner
+
+# Provides the function with a "form" dictionary containing all the
+# keys specified in `types`, converted to their corresponding type value.
+def fill_dict_from_form(types: dict[str, Callable[[str], Any]]):
+	def inner_decorator(fn):
+		@wraps(fn)
+		def inner():
+			form = {}
+			for param, ty in types.items():
+				if ty == list:
+					# special case: return a list of strings
+					form[param] = request.form.getlist(param)
+				elif isinstance(ty, GenericAlias):
+					# special case: return a list of [generic type]
+					if ty.__origin__ == list:
+						form[param] = request.form.getlist(param, type=ty.__args__[0])
+					else:
+						raise Exception("unknown generic")
+				else:
+					form[param] = request.form.get(param, type=ty)
+			return fn(form)
+		return inner
+	return inner_decorator
+
+# Looks at the function's type hints to fill in the corresponding arguments
+# from the request.form object, converting the strings to the types specified.
+def fill_params_from_form(fn):
+	@wraps(fn)
+	def inner():
+		args = {}
+		for param, info in inspect.signature(fn).parameters.items():
+			ty = str if info.annotation == inspect.Parameter.empty else info.annotation
+			if ty == list:
+				# special case: return a list of strings
+				args[param] = request.form.getlist(param)
+			elif isinstance(ty, GenericAlias):
+				# special case: return a list of [generic type]
+				if ty.__origin__ == list:
+					args[param] = request.form.getlist(param, type=ty.__args__[0])
+				else:
+					raise Exception("unknown generic")
+			else:
+				args[param] = request.form.get(param, type=ty)
+		return fn(**args)
+	return inner
+
+# ROUTES
 
 @app.route("/catalog/search", methods=['GET'])
 @catch_exception
-def catalog_list():
-	r = actions.search_catalog(cur, category="shirt", color=["red", 'blue'], instock=True)
-	return { 'items': r }
+@fill_dict_from_form({
+	'name': list[str],
+	'category': list[str],
+	'size': list[str],
+	'color': list[str],
+	'instock': bool,
+})
+def catalog_list(form):
+	return { 'items': actions.search_catalog( cur, **form ) }
 
 @app.route("/cart/list", methods=['GET'])
 @catch_exception
-def cart_list():
-	customer_id = request.form.get('customer_id')
-	if customer_id and customer_id.isnumeric():
-		customer_id = int(customer_id)
-		return { 'success': True, 'items': actions.get_cart(cur, customer_id) }
-	else:
-		return { 'success': False, 'message': "Supply a valid customer_id." }
+@fill_params_from_form
+def cart_list(customer: int):
+	return { 'items': actions.get_cart(cur, customer) }
 
 @app.route("/cart/add", methods=['POST'])
 @catch_exception
-def add_to_cart():
-	customer_id = request.form.get('customer_id')
-	if customer_id and customer_id.isnumeric():
-		customer_id = int(customer_id)
-		return { 'success': True, 'items': actions.add_to_cart(cur, customer_id,) }
-	else:
-		return { 'success': False, 'message': "Supply a valid customer_id." }
+@fill_params_from_form
+def add_to_cart(customer: int, item: int, variant: int):
+	return { 'items': actions.add_to_cart(cur, customer, item, variant) }
 
 @app.route("/cart/checkout", methods=['POST'])
 @catch_exception
-def checkout():
-	try:
-		return { 'success': True, 'order_id': actions.place_order(cur, 11) }
-	except:
-		return { 'success': False, 'message': "Server error." }
+@fill_params_from_form
+def checkout(customer: int):
+	return { 'order_id': actions.place_order(cur, customer) }
 
 # Secret zone where you can ???
 @app.route("/echo", methods=['GET', 'POST'])
