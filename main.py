@@ -27,6 +27,16 @@ db_config = {
 
 # ROUTES
 
+# - customer modify
+# - orders list
+# - order items 
+
+@app.route("/customer/signin", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def signin(email: str, password: str):
+	return { 'valid': actions.check_login(cur, email, password) }
+
 @app.route("/customer/signup", methods=['POST'])
 @catch_exception
 @fill_dict_from_form({
