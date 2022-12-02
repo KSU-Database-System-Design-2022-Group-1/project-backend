@@ -2,6 +2,7 @@ import sys, os
 
 from mariadb import mariadb, Cursor, Connection
 from flask import Flask, request, send_file
+from flask_cors import CORS
 
 import actions
 from decorators import catch_exception, fill_dict_from_form, fill_params_from_form
@@ -12,6 +13,7 @@ cur: Cursor = None # type: ignore
 conn: Connection = None # type: ignore
 
 app = Flask(__name__)
+CORS(app)
 
 if not os.path.exists("./images"):
 	os.mkdir("./images")
