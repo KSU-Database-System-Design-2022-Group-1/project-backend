@@ -28,8 +28,6 @@ db_config = {
 # ROUTES
 
 # - customer modify
-# - orders list
-# - order items 
 
 @app.route("/customer/signin", methods=['GET'])
 @catch_exception
@@ -104,29 +102,52 @@ def get_image(image: int):
 	(mime_type, _) = actions.get_image_info(cur, image)
 	return send_file(f"./images/{image}", mimetype=mime_type)
 
-@app.route("/cart/list", methods=['GET'])
-@catch_exception
-@fill_params_from_form
-def cart_list(customer: int):
-	return { 'items': actions.get_cart(cur, customer) }
-
 @app.route("/catalog/get", methods=['GET'])
 @catch_exception
 @fill_params_from_form
 def get_item_info(item: int):
 	return actions.get_item_info(cur, item)
 
+@app.route("/cart/list", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def cart_list(customer: int):
+	return { 'items': actions.get_cart_items(cur, customer) }
+
 @app.route("/cart/add", methods=['POST'])
 @catch_exception
 @fill_params_from_form
-def add_to_cart(customer: int, item: int, variant: int):
-	return { 'items': actions.add_to_cart(cur, customer, item, variant) }
+def add_to_cart(customer: int, item: int, variant: int, quantity: int):
+	actions.add_to_cart(cur, customer, item, variant, quantity)
+	return {}
+
+@app.route("/cart/remove", methods=['POST'])
+@catch_exception
+@fill_params_from_form
+def remove_from_cart(customer: int, item: int, variant: int):
+	actions.remove_from_cart(cur, customer, item, variant)
+	return {}
 
 @app.route("/cart/checkout", methods=['POST'])
 @catch_exception
 @fill_params_from_form
 def checkout(customer: int):
-	return { 'order_id': actions.place_order(cur, customer) }
+	return { 'order': actions.place_order(cur, customer) }
+
+@app.route("/order/list", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def list_orders(customer: int):
+	return { 'orders': actions.list_orders(cur, customer) }
+
+@app.route("/order/get", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def list_order(order: int):
+	return {
+		**actions.get_order_info(cur, order),
+		'items': actions.list_order_items(cur, order)
+	}
 
 # Secret zone where you can ???
 @app.route("/echo", methods=['GET', 'POST'])
@@ -147,8 +168,13 @@ def aaa():
 	<input type=file name=image /><label for=image>New Image</label>
 	<input type=submit value="Upload" />
 </form>
+<div>
+	<input type=number name=customer value=1 />
+	<input type=submit value="Upload" />
+	<img src="" />
+</div>
 <form>
-	<input type=number name=customer_id value=1 />
+	<input type=number name=customer value=1 />
 	<input action="/cart/list" formmethod=get type=submit value="List Cart Items" />
 </form>"""
 	return {

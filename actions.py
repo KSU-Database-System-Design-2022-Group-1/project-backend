@@ -220,15 +220,39 @@ def get_item_info(cur: Cursor, item_id: int):
 	}
 
 # Returns the items in the cart.
-def get_cart(cur: Cursor, customer_id: int):
+def get_cart_items(cur: Cursor, customer_id: int):
 	cur.execute("""
-		SELECT item_id, variant_id, quantity
-		FROM shopping_cart WHERE customer_id = ?;
+		WITH this_cart (item_id, variant_id, quantity) AS (
+			SELECT item_id, variant_id, quantity
+			FROM shopping_cart
+			WHERE customer_id = ? )
+		SELECT
+			item_id, variant_id,
+			item_name,
+			size, color,
+			price, weight,
+			quantity,
+			COALESCE(variant_image, item_image) AS image_id
+		FROM this_cart JOIN (
+			variant_catalog JOIN item_catalog USING (item_id)
+		) USING (item_id, variant_id);
 		""", (customer_id,))
+	
 	return [{
-		'id': { 'item': item_id, 'variant': variant_id },
-		'quantity': quantity
-	} for (item_id, variant_id, quantity) in cur]
+		'id': { 'customer': customer_id, 'item': item_id, 'variant': variant_id },
+		'name': item_name,
+		'size': size, 'color': color,
+		'price': price, 'weight': weight,
+		'quantity': quantity,
+		'image': image_id
+	} for (
+		item_id, variant_id,
+		item_name,
+		size, color,
+		price, weight,
+		quantity,
+		image_id
+	) in cur]
 
 # Returns the total price and weight (in a tuple, in that order) of the cart.
 def get_cart_info(cur: Cursor, customer_id: int):
@@ -340,10 +364,28 @@ def add_to_cart(
 	quantity: int = 1
 ):
 	cur.execute("""
-		INSERT INTO shopping_cart (
+		REPLACE INTO shopping_cart (
 			customer_id, item_id, variant_id, quantity
 		) VALUES (?, ?, ?, ?);
 		""", (customer_id, item_id, variant_id, quantity))
+def remove_from_cart(
+	cur: Cursor,
+	customer_id: int,
+	item_id: int | None, variant_id: int | None
+):
+	print("aaaa", item_id, variant_id)
+	if item_id is None or variant_id is None:
+		cur.execute("""
+			DELETE FROM shopping_cart
+			WHERE customer_id = ?;
+			""", (customer_id,))
+	else:
+		cur.execute("""
+			DELETE FROM shopping_cart
+			WHERE customer_id = ?
+			AND item_id = ?
+			AND variant_id = ?;
+			""", (customer_id, item_id, variant_id))
 
 def place_order(cur: Cursor, customer_id: int) -> int:
 	# Calculate total price and weight of shopping cart items.
@@ -411,3 +453,81 @@ def place_order(cur: Cursor, customer_id: int) -> int:
 	
 	# Return the new order's order_id.
 	return order_id # type: ignore
+
+def list_orders(cur: Cursor, customer_id: int):
+	cur.execute("""
+		SELECT
+			order_id, status,
+			total_price, total_weight,
+			order_date
+		FROM `order`
+		WHERE customer_id = ?;
+	""", (customer_id,))
+	
+	return [{
+		'id': { 'customer': customer_id, 'order': order_id },
+		'status': status,
+		'price': total_price, 'weight': total_weight,
+		'timestamp': order_date
+	} for (
+		order_id, status,
+		total_price, total_weight,
+		order_date
+	) in cur]
+
+def get_order_info(cur: Cursor, order_id: int):
+	cur.execute("""
+		SELECT
+			customer_id, status,
+			total_price, total_weight,
+			order_date
+		FROM `order`
+		WHERE order_id = ?;
+	""", (order_id,))
+	
+	(
+		customer_id, status,
+		total_price, total_weight,
+		order_date
+	) = cur.fetchone()
+	
+	return {
+		'id': { 'customer': customer_id, 'order': order_id },
+		'status': status,
+		'price': total_price, 'weight': total_weight,
+		'timestamp': order_date
+	}
+
+def list_order_items(cur: Cursor, order_id: int):
+	cur.execute("""
+		WITH this_order (item_id, variant_id, quantity) AS (
+			SELECT item_id, variant_id, quantity
+			FROM order_item
+			WHERE order_id = ? )
+		SELECT
+			item_id, variant_id,
+			item_name,
+			size, color,
+			price, weight,
+			quantity,
+			COALESCE(variant_image, item_image) AS image_id
+		FROM this_order JOIN (
+			variant_catalog JOIN item_catalog USING (item_id)
+		) USING (item_id, variant_id);
+	""", (order_id,))
+	
+	return [{
+		'id': { 'order': order_id, 'item': item_id, 'variant': variant_id },
+		'name': item_name,
+		'size': size, 'color': color,
+		'price': price, 'weight': weight,
+		'quantity': quantity,
+		'image': image_id
+	} for (
+		item_id, variant_id,
+		item_name,
+		size, color,
+		price, weight,
+		quantity,
+		image_id
+	) in cur]
