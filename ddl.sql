@@ -98,7 +98,10 @@ CREATE TABLE `order` (
 	order_id INT AUTO_INCREMENT NOT NULL,
 	customer_id INT NOT NULL,
 	
+	order_date TIMESTAMP NOT NULL,
+	
 	shipping_address INT NOT NULL,
+	billing_address INT NOT NULL,
 	
 	total_price DECIMAL(6,2) NOT NULL,
 	total_weight FLOAT NOT NULL,

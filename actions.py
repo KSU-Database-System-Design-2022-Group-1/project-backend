@@ -167,7 +167,7 @@ def create_image(cur: Cursor, mime_type: str, alt_text: str | None = None) -> in
 		""", (mime_type, alt_text))
 	return cur.lastrowid # type: ignore
 
-def get_image_info(cur: Cursor, image_id: int) -> (str, str):
+def get_image_info(cur: Cursor, image_id: int) -> tuple[str, str]:
 	cur.execute("""
 		SELECT mime_type, alt_text
 		FROM catalog_images
@@ -353,13 +353,20 @@ def place_order(cur: Cursor, customer_id: int) -> int:
 	cur.execute("""
 		INSERT INTO `order` (
 			customer_id,
-			shipping_address,
+			order_date,
+			shipping_address, billing_address,
 			total_price, total_weight,
 			status
 		) VALUES (
 			?,
+			CURRENT_TIMESTAMP(),
 			(
 				SELECT shipping_address
+				FROM customer AS tmp
+				WHERE tmp.customer_id = ?
+			),
+			(
+				SELECT billing_address
 				FROM customer AS tmp
 				WHERE tmp.customer_id = ?
 			),
