@@ -231,7 +231,7 @@ def get_cart_items(cur: Cursor, customer_id: int):
 			item_name,
 			size, color,
 			price, weight,
-			quantity,
+			quantity, stock,
 			(price * quantity) AS total_price,
 			COALESCE(variant_image, item_image) AS image_id
 		FROM this_cart JOIN (
@@ -244,7 +244,7 @@ def get_cart_items(cur: Cursor, customer_id: int):
 		'name': item_name,
 		'size': size, 'color': color,
 		'price': price, 'weight': weight,
-		'quantity': quantity,
+		'quantity': quantity, 'stock': stock,
 		'total_price': total_price,
 		'image': image_id
 	} for (
@@ -252,7 +252,7 @@ def get_cart_items(cur: Cursor, customer_id: int):
 		item_name,
 		size, color,
 		price, weight,
-		quantity,
+		quantity, stock,
 		total_price,
 		image_id
 	) in cur]
