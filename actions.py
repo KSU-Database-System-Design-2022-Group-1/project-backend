@@ -257,14 +257,16 @@ def get_cart_items(cur: Cursor, customer_id: int):
 # Returns the total price and weight (in a tuple, in that order) of the cart.
 def get_cart_info(cur: Cursor, customer_id: int):
 	cur.execute("""
-		SELECT COALESCE(SUM(price), 0), COALESCE(SUM(weight), 0)
+		SELECT COUNT(*), COALESCE(SUM(price), 0), COALESCE(SUM(weight), 0)
 		FROM shopping_cart JOIN variant_catalog USING (item_id, variant_id)
 		WHERE customer_id = ?;
 		""", (customer_id,))
 	
-	# If shopping cart empty, returns (0, 0)
-	# otherwise, returns (price, weight)
-	return cur.fetchone()
+	(count, price, weight) = cur.fetchone()
+	
+	# If shopping cart empty, returns (0, 0, 0)
+	# otherwise, returns (count, price, weight)
+	return { 'count': count, 'price': price, 'weight': weight }
 
 # Creates a catalog item and returns its new item_id.
 def create_catalog_item(

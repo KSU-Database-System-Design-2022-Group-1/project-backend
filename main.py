@@ -110,6 +110,12 @@ def get_image(image: int):
 def get_item_info(item: int):
 	return actions.get_item_info(cur, item)
 
+@app.route("/cart/info", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def cart_count(customer: int):
+	return actions.get_cart_info(cur, customer)
+
 @app.route("/cart/list", methods=['GET'])
 @catch_exception
 @fill_params_from_form
