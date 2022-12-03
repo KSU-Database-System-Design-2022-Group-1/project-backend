@@ -211,7 +211,7 @@ try:
 	cur = conn.cursor()
 	
 	# Run the server
-	app.run()
+	app.run(port=3000)
 	
 except mariadb.Error as e:
 	print(f"Database Error ({e.__name__}):\n{e}")

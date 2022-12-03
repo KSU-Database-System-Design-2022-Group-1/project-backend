@@ -232,6 +232,7 @@ def get_cart_items(cur: Cursor, customer_id: int):
 			size, color,
 			price, weight,
 			quantity,
+			(price * quantity) AS total_price,
 			COALESCE(variant_image, item_image) AS image_id
 		FROM this_cart JOIN (
 			variant_catalog JOIN item_catalog USING (item_id)
@@ -244,6 +245,7 @@ def get_cart_items(cur: Cursor, customer_id: int):
 		'size': size, 'color': color,
 		'price': price, 'weight': weight,
 		'quantity': quantity,
+		'total_price': total_price,
 		'image': image_id
 	} for (
 		item_id, variant_id,
@@ -251,13 +253,17 @@ def get_cart_items(cur: Cursor, customer_id: int):
 		size, color,
 		price, weight,
 		quantity,
+		total_price,
 		image_id
 	) in cur]
 
 # Returns the total price and weight (in a tuple, in that order) of the cart.
 def get_cart_info(cur: Cursor, customer_id: int):
 	cur.execute("""
-		SELECT COUNT(*), COALESCE(SUM(price), 0), COALESCE(SUM(weight), 0)
+		SELECT
+			COUNT(*),
+			COALESCE(SUM(price * quantity), 0),
+			COALESCE(SUM(weight * quantity), 0)
 		FROM shopping_cart JOIN variant_catalog USING (item_id, variant_id)
 		WHERE customer_id = ?;
 		""", (customer_id,))
