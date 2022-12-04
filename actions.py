@@ -5,8 +5,8 @@ from mariadb import Cursor
 
 sizes = ['XS', 'S', 'M', 'L', 'XL']
 
-# Check if user's email/password pair is valid.
 def check_login(cur: Cursor, email: str, password: str) -> bool:
+	""" Check if user's email/password pair is valid. """
 	cur.execute("""
 		SELECT COUNT(*)
 		FROM accounts
@@ -15,7 +15,6 @@ def check_login(cur: Cursor, email: str, password: str) -> bool:
 	""", (email, password))
 	return bool(cur.fetchall()[0][0])
 
-# Create a new customer with no set addresses.
 def create_customer(
 	cur: Cursor,
 	first_name: str, middle_name: str, last_name: str,
@@ -24,6 +23,8 @@ def create_customer(
 	shipping_addr: int | None = None,
 	billing_addr: int | None = None
 ) -> int:
+	""" Create a new customer. By default, they won't have any addresses. """
+	
 	cur.execute("""
 		INSERT INTO customer (
 			first_name, middle_name, last_name,
@@ -46,6 +47,10 @@ def create_customer(
 
 # Get a customer's information.
 def get_customer_info(cur: Cursor, customer_id: int):
+	""" Get a customer's information. Merges in the shipping and billing addresses too. """
+	
+	# TODO: hey!! this might be null! Jeez! This really is 3 am code...
+	
 	cur.execute("""
 			SELECT
 				first_name, middle_name, last_name,
@@ -110,9 +115,12 @@ def get_customer_info(cur: Cursor, customer_id: int):
 		'phone_number': phone_number
 	}
 
-# Edit a customer. Only accepts fields from valid_fields.
-# Don't include fields you don't want to modify.
 def edit_customer(cur: Cursor, customer_id: int, **fields):
+	"""
+	Edit a customer. Only accepts fields from `valid_fields`.
+	Don't include fields you don't want to modify.
+	"""
+	
 	valid_fields = [
 		'first_name', 'middle_name', 'last_name',
 		'email', 'password',
@@ -146,13 +154,16 @@ def edit_customer(cur: Cursor, customer_id: int, **fields):
 	
 	cur.execute(query, params)
 
-# Create a new address.
-# (May return existing address_ids if they match.)
 def create_address(
 	cur: Cursor,
 	street_number: str, street_name: str, street_apt: str | None,
 	city: str, state: str, zip: int
 ) -> int:
+	"""
+	Create a new address.
+	(May return existing address_ids if they match.)
+	"""
+	
 	cur.execute("""
 		SELECT MIN(address_id)
 		FROM address
@@ -183,6 +194,8 @@ def create_address(
 		return existing_address # type: ignore
 
 def get_address_info(cur: Cursor, address_id: int):
+	""" Gets an address from an address ID number. """
+	
 	cur.execute("""
 		SELECT
 			street_number, street_name, street_apt,
@@ -211,6 +224,12 @@ def update_customer_address(
 	customer_id: int, address_type: Literal['shipping'] | Literal['billing'],
 	**fields
 ):
+	"""
+	Updates either the billing or shipping address associated with a specific customer.
+	Also, checks to see if the underlying ID is used anywhere else, and if so it'll
+	create a new address entry.
+	"""
+	
 	valid_fields = [
 		'street_number', 'street_name', 'street_apt',
 		'city', 'state', 'zip'
@@ -318,17 +337,20 @@ def update_customer_address(
 	
 	return { 'address': address_id }
 
-# Fancy search function.
-# Set keyword args to add different types of filters.
-# It'll construct a query using all of them.
 def search_catalog(cur: Cursor, **filters):
-	# The **filters thing is a keyword argument list.
-	# It'll store a dict[str, Any] containing any other
-	# keyword arguments you provide. Keyword arguments
-	# are those things like name="jim" and such.
-	# The great thing is that you aren't required to
-	# include all of them, so you can skip the checks
-	# you don't need.
+	"""
+	Fancy search function.
+	Set keyword args to add different types of filters.
+	It'll construct a query using all of them.
+	
+	The `**filters` parameter is a keyword argument list.
+	It'll store a dict[str, Any] containing any other
+	keyword arguments you provide. Keyword arguments
+	are those things like `name="jim"` and such.
+	The great thing is that you aren't required to
+	include all of them, so you can skip the filters
+	you don't need.
+	"""
 	
 	query = """
 		SELECT
@@ -398,6 +420,11 @@ def search_catalog(cur: Cursor, **filters):
 	) in cur]
 
 def create_image(cur: Cursor, mime_type: str, alt_text: str | None = None) -> int:
+	"""
+	Creates everything but the image's data.
+	Images are fetched in `main.py`, via the `images/` directory.
+	"""
+	# TODO: that should be extracted to this file if i have time ( i don't)
 	cur.execute("""
 		INSERT INTO catalog_images (
 			mime_type, alt_text
@@ -405,16 +432,25 @@ def create_image(cur: Cursor, mime_type: str, alt_text: str | None = None) -> in
 		""", (mime_type, alt_text))
 	return cur.lastrowid # type: ignore
 
-def get_image_info(cur: Cursor, image_id: int) -> tuple[str, str]:
+def get_image_info(cur: Cursor, image_id: int):
+	"""
+	Fetches image info. Returns a dict containing the image's MIME type and
+	a fallback image description for if the image file is missing or the user
+	is using a screen reader.
+	"""
 	cur.execute("""
 		SELECT mime_type, alt_text
 		FROM catalog_images
 		WHERE image_id = ?;
 		""", (image_id,))
 	(mime_type, alt_text) = cur.fetchone()
-	return (mime_type, alt_text)
+	return { 'mime_type': mime_type, 'alt_text': alt_text }
 
 def get_item_info(cur: Cursor, item_id: int):
+	"""
+	Returns all the metadata from an item, along with a list of
+	all the item's variants with metadata from those variants.
+	"""
 	cur.execute("""
 		SELECT item_name, description, category, item_image
 		FROM item_catalog
@@ -457,8 +493,9 @@ def get_item_info(cur: Cursor, item_id: int):
 		'variants': variants
 	}
 
-# Returns the items in the cart, with details about each one.
 def get_cart_items(cur: Cursor, customer_id: int):
+	""" Returns the items in the cart, with details about each one. """
+	
 	cur.execute("""
 		WITH this_cart (item_id, variant_id, quantity) AS (
 			SELECT item_id, variant_id, quantity
@@ -495,10 +532,13 @@ def get_cart_items(cur: Cursor, customer_id: int):
 		image_id
 	) in cur]
 
-# Returns the number of items in, and the total price and weight,
-# (in a dict with fancy names!!) of the cart.
-# If cart is empty, all these are zero, thankfully.
 def get_cart_info(cur: Cursor, customer_id: int):
+	"""
+	Returns the number of items in, and the total price and weight,
+	(in a dict with fancy names!!) of the cart.
+	If cart is empty, all these are zero, thankfully.
+	"""
+	
 	cur.execute("""
 		SELECT
 			COUNT(*),
@@ -514,12 +554,13 @@ def get_cart_info(cur: Cursor, customer_id: int):
 	# otherwise, returns (count, price, weight)
 	return { 'count': count, 'price': price, 'weight': weight }
 
-# Creates a catalog item and returns its new item_id.
 def create_catalog_item(
 	cur: Cursor,
 	name: str, description: str, category: str,
 	variants: list[tuple[ str, str, float, float, int ]],
 ) -> int:
+	""" Creates a catalog item and returns its new item_id. """
+	
 	cur.execute("""
 		INSERT INTO item_catalog (item_name, description, category, item_image)
 		VALUES (?, ?, ?, NULL);
@@ -551,8 +592,6 @@ def create_catalog_item(
 	# Return the auto-generated item_id
 	return item_id # type: ignore
 
-# Creates a single catalog item variant.
-# Don't use unless you really have to.
 def create_catalog_item_variant(
 	cur: Cursor,
 	item_id: int, variant_id: int | None,
@@ -560,6 +599,11 @@ def create_catalog_item_variant(
 	price: float, weight: float,
 	stock: int = 1, image: int | None = None
 ):
+	"""
+	Creates a single catalog item variant.
+	Don't use unless you really have to.
+	"""
+	
 	params = (
 		item_id, variant_id,
 		size, color,
@@ -611,6 +655,11 @@ def add_to_cart(
 	item_id: int, variant_id: int,
 	quantity: int = 1
 ):
+	"""
+	Add the item variant to the cart. Optionally, provide a quantity.
+	If the item is already present in the cart, this will reset its
+	quantity to the specified number blah blah.
+	"""
 	cur.execute("""
 		REPLACE INTO shopping_cart (
 			customer_id, item_id, variant_id, quantity
@@ -621,6 +670,7 @@ def remove_from_cart(
 	customer_id: int,
 	item_id: int | None, variant_id: int | None
 ):
+	""" Remove an item from the cart / the entire cart's contents. """
 	if item_id is None or variant_id is None:
 		cur.execute("""
 			DELETE FROM shopping_cart
@@ -635,6 +685,13 @@ def remove_from_cart(
 			""", (customer_id, item_id, variant_id))
 
 def place_order(cur: Cursor, customer_id: int) -> int:
+	"""
+	Places an order, clearing the items from the cart and creating
+	a new entry in the orders table. Returns the new order's ID.
+	
+	Uuugh. should probably decrement the stock.
+	"""
+	
 	# Calculate total price and weight of shopping cart items.
 	(price, weight) = get_cart_info(cur, customer_id)
 	
@@ -702,6 +759,8 @@ def place_order(cur: Cursor, customer_id: int) -> int:
 	return order_id # type: ignore
 
 def list_orders(cur: Cursor, customer_id: int):
+	""" Returns a list of all orders associated with a customer. """
+	
 	cur.execute("""
 		SELECT
 			order_id, status,
@@ -723,6 +782,11 @@ def list_orders(cur: Cursor, customer_id: int):
 	) in cur]
 
 def get_order_info(cur: Cursor, order_id: int):
+	"""
+	Gets information about a specific order.
+	(Like list_orders but for one order...)
+	"""
+	
 	cur.execute("""
 		SELECT
 			customer_id, status,
@@ -746,6 +810,8 @@ def get_order_info(cur: Cursor, order_id: int):
 	}
 
 def list_order_items(cur: Cursor, order_id: int):
+	""" List the items ordered in an order. """
+	
 	cur.execute("""
 		WITH this_order (item_id, variant_id, quantity) AS (
 			SELECT item_id, variant_id, quantity
