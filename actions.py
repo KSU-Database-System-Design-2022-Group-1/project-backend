@@ -44,6 +44,108 @@ def create_customer(
 	))
 	return cur.lastrowid # type: ignore
 
+# Get a customer's information.
+def get_customer_info(cur: Cursor, customer_id: int):
+	cur.execute("""
+			SELECT
+				first_name, middle_name, last_name,
+				email, password,
+				shipping_address,
+				shipping.street_number, shipping.street_name, shipping.street_apt,
+				shipping.city, shipping.state, shipping.zip,
+				billing_address,
+				billing.street_number, billing.street_name, billing.street_apt,
+				billing.city, billing.state, billing.zip,
+				phone_number
+			FROM customer
+				JOIN address AS shipping ON shipping_address = shipping.address_id
+				JOIN address AS billing ON billing_address = billing.address_id
+			WHERE customer_id = ?;
+		""", (customer_id,))
+	
+	(
+		first_name, middle_name, last_name,
+		email, password,
+		shipping_address,
+		shipping_street_number, shipping_street_name, shipping_street_apt,
+		shipping_city, shipping_state, shipping_zip,
+		billing_address,
+		billing_street_number, billing_street_name, billing_street_apt,
+		billing_city, billing_state, billing_zip,
+		phone_number
+	) = cur.fetchone()
+	
+	return {
+		'name': {
+			'first': first_name,
+			'middle': middle_name,
+			'last': last_name
+		},
+		'email': email,
+		'password': password,
+		'address': {
+			'shipping': {
+				'id': shipping_address,
+				'street': {
+					'number': shipping_street_number,
+					'name': shipping_street_name,
+					'apartment': shipping_street_apt
+				},
+				'city': shipping_city,
+				'state': shipping_state,
+				'zip': shipping_zip
+			},
+			'billing': {
+				'id': billing_address,
+				'street': {
+					'number': billing_street_number,
+					'name': billing_street_name,
+					'apartment': billing_street_apt
+				},
+				'city': billing_city,
+				'state': billing_state,
+				'zip': billing_zip
+			}
+		},
+		'phone_number': phone_number
+	}
+
+# Edit a customer. Only accepts fields from valid_fields.
+# Don't include fields you don't want to modify.
+def edit_customer(cur: Cursor, customer_id: int, **fields):
+	valid_fields = [
+		'first_name', 'middle_name', 'last_name',
+		'email', 'password',
+		'phone_number'
+	]
+	
+	if customer_id is None:
+		raise Exception("missing customer id!")
+	
+	query = """
+		UPDATE customer
+		SET """
+	params = []
+	annoying_comma = False
+	
+	for (field, value) in fields.items():
+		if field not in valid_fields \
+		or not value:
+			continue # skip invalid fields
+		
+		if annoying_comma:
+			query += ',\n'
+		else:
+			annoying_comma = True
+		
+		query += f"{field} = ?"
+		params.append(value)
+	
+	query += "\nWHERE customer_id = ? LIMIT 1;"
+	params.append(customer_id)
+	
+	cur.execute(query, params)
+
 # Create a new address.
 # (May return existing address_ids if they match.)
 def create_address(
@@ -219,7 +321,7 @@ def get_item_info(cur: Cursor, item_id: int):
 		'variants': variants
 	}
 
-# Returns the items in the cart.
+# Returns the items in the cart, with details about each one.
 def get_cart_items(cur: Cursor, customer_id: int):
 	cur.execute("""
 		WITH this_cart (item_id, variant_id, quantity) AS (
@@ -257,7 +359,9 @@ def get_cart_items(cur: Cursor, customer_id: int):
 		image_id
 	) in cur]
 
-# Returns the total price and weight (in a tuple, in that order) of the cart.
+# Returns the number of items in, and the total price and weight,
+# (in a dict with fancy names!!) of the cart.
+# If cart is empty, all these are zero, thankfully.
 def get_cart_info(cur: Cursor, customer_id: int):
 	cur.execute("""
 		SELECT

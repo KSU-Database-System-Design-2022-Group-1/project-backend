@@ -77,17 +77,25 @@ def create_customer(form):
 		}
 	}
 
-@app.route("/catalog/search", methods=['GET'])
+@app.route("/customer/get", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def get_customer(customer: int):
+	return actions.get_customer_info(cur, customer)
+
+@app.route("/customer/edit", methods=['POST'])
 @catch_exception
 @fill_dict_from_form({
-	'name': list[str],
-	'category': list[str],
-	'size': list[str],
-	'color': list[str],
-	'instock': bool,
+	'customer': int,
+	
+	'first_name': str, 'middle_name': str, 'last_name': str,
+	'email': str, 'password': str,
+	'phone_number': str
 })
-def catalog_list(form):
-	return { 'items': actions.search_catalog( cur, **form ) }
+def edit_customer(form):
+	customer = form['customer']
+	actions.edit_customer( cur, customer, **form )
+	return {}
 
 @app.route("/image/create", methods=['POST'])
 @catch_exception
@@ -103,6 +111,18 @@ def create_image():
 def get_image(image: int):
 	(mime_type, _) = actions.get_image_info(cur, image)
 	return send_file(f"./images/{image}", mimetype=mime_type)
+
+@app.route("/catalog/search", methods=['GET'])
+@catch_exception
+@fill_dict_from_form({
+	'name': list[str],
+	'category': list[str],
+	'size': list[str],
+	'color': list[str],
+	'instock': bool,
+})
+def catalog_list(form):
+	return { 'items': actions.search_catalog( cur, **form ) }
 
 @app.route("/catalog/get", methods=['GET'])
 @catch_exception
