@@ -97,6 +97,27 @@ def edit_customer(form):
 	actions.edit_customer( cur, customer, **form )
 	return {}
 
+@app.route("/address/get", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def get_address(address: int):
+	return actions.get_address_info(cur, address)
+
+@app.route("/address/edit", methods=['POST'])
+@catch_exception
+@fill_dict_from_form({
+	'customer': int,
+	'type': str, # Literal['shipping'] | Literal['billing'],
+	
+	'street_number': str, 'street_name': str,
+	'street_apt': str, # | None,
+	'city': str, 'state': str, 'zip': int,
+})
+def edit_customer_address(form):
+	customer = form['customer']
+	address_type = form['type']
+	return actions.update_customer_address(cur, customer, address_type, **form)
+
 @app.route("/image/create", methods=['POST'])
 @catch_exception
 def create_image():

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from collections.abc import Callable
 
 from mariadb import Cursor
@@ -130,7 +130,7 @@ def edit_customer(cur: Cursor, customer_id: int, **fields):
 	
 	for (field, value) in fields.items():
 		if field not in valid_fields \
-		or not value:
+		or value is None:
 			continue # skip invalid fields
 		
 		if annoying_comma:
@@ -181,6 +181,142 @@ def create_address(
 		return cur.lastrowid # type: ignore
 	else:
 		return existing_address # type: ignore
+
+def get_address_info(cur: Cursor, address_id: int):
+	cur.execute("""
+		SELECT
+			street_number, street_name, street_apt,
+			city, state, zip
+		FROM address
+		WHERE address_id = ?;
+		""", (address_id,))
+	
+	(
+		street_number, street_name, street_apt,
+		city, state, zip_code
+	) = cur.fetchone()
+	
+	return {
+		'id': address_id,
+		'street': {
+			'number': street_number,
+			'name': street_name,
+			'apartment': street_apt
+		},
+		'city': city, 'state': state, 'zip': zip_code
+	}
+
+def update_customer_address(
+	cur: Cursor,
+	customer_id: int, address_type: Literal['shipping'] | Literal['billing'],
+	**fields
+):
+	valid_fields = [
+		'street_number', 'street_name', 'street_apt',
+		'city', 'state', 'zip'
+	]
+	
+	if address_type not in ['shipping', 'billing']:
+		raise Exception("address_type must be either 'shipping' or 'billing'")
+	
+	# if we had a billion orders, this'd be problematic.
+	# (maybe it'd necessitate separate customer_address
+	#  and order_address tables!!) but this is fine.
+	
+	cur.execute(f"""
+		SELECT {address_type}_address
+		FROM customer
+		WHERE customer_id = ?;
+		""", (customer_id,))
+	(address_id,) = cur.fetchone()
+	
+	other_addr_type = 'shipping' if address_type == 'billing' else 'billing'
+	cur.execute(f"""
+		SELECT COUNT(*)
+		FROM customer
+		WHERE {other_addr_type}_address = ?
+		OR (customer_id <> ?
+		AND {address_type}_address = ?);
+		""", (address_id, customer_id, address_id))
+	(customer_usage,) = cur.fetchone()
+	
+	need_to_clone = customer_usage > 0
+	
+	if not need_to_clone:
+		cur.execute(f"""
+			SELECT COUNT(*)
+			FROM `order`
+			WHERE shipping_address = ?
+			OR billing_address = ?;
+			""", (address_id, address_id))
+		(order_usage,) = cur.fetchone()
+		
+		need_to_clone = order_usage > 0
+	
+	if need_to_clone:
+		query = """
+			INSERT INTO address (
+				street_number, street_name, street_apt,
+				city, state, zip
+			) SELECT 
+		"""
+		params = []
+		annoying_comma = False
+		
+		for field in valid_fields:
+			if annoying_comma:
+				query += ",\n"
+			else:
+				annoying_comma = True
+			
+			if field in fields \
+			and fields[field] is not None:
+				query += "?"
+				params.append(fields[field])
+			else:
+				query += field
+		
+		query += "\n" + """
+			FROM address
+			WHERE address_id = ?;
+		"""
+		params.append(address_id)
+		
+		cur.execute(query, params)
+		address_id = cur.lastrowid # type: ignore
+		
+		cur.execute(f"""
+			UPDATE customer
+			SET {address_type}_address = ?
+			WHERE customer_id = ? LIMIT 1;
+		""", (address_id, customer_id))
+	else:
+		query = """
+			UPDATE address
+			SET 
+		"""
+		params = []
+		annoying_comma = False
+		
+		for (field, value) in fields.items():
+			if field not in valid_fields \
+			or value is None:
+				continue # skip invalid fields
+			
+			if annoying_comma:
+				query += ",\n"
+			else:
+				annoying_comma = True
+			
+			query += f"{field} = ?"
+			params.append(value)
+		
+		query += "\nWHERE address_id = ? LIMIT 1;"
+		params.append(address_id)
+		
+		cur.execute(query, params)
+	
+	return { 'address': address_id }
 
 # Fancy search function.
 # Set keyword args to add different types of filters.
@@ -485,7 +621,6 @@ def remove_from_cart(
 	customer_id: int,
 	item_id: int | None, variant_id: int | None
 ):
-	print("aaaa", item_id, variant_id)
 	if item_id is None or variant_id is None:
 		cur.execute("""
 			DELETE FROM shopping_cart
