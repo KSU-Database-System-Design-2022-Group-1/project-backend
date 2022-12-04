@@ -693,7 +693,12 @@ def place_order(cur: Cursor, customer_id: int) -> int:
 	"""
 	
 	# Calculate total price and weight of shopping cart items.
-	(price, weight) = get_cart_info(cur, customer_id)
+	cart_info = get_cart_info(cur, customer_id)
+	( count, price, weight ) = (
+		cart_info['count'],
+		cart_info['price'],
+		cart_info['weight']
+	)
 	
 	# Create a new order and fill it with info from the shopping cart.
 	cur.execute("""
@@ -719,7 +724,7 @@ def place_order(cur: Cursor, customer_id: int) -> int:
 			?, ?,
 			NULL
 		);
-		""", (customer_id, customer_id, price, weight))
+		""", (customer_id, customer_id, customer_id, price, weight))
 	# One of the default fields will be order_id,
 	# the primary key which is auto-incremented.
 	
