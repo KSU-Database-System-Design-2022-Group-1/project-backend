@@ -44,23 +44,19 @@ def signin(email: str, password: str):
 	'email': str, 'password': str,
 	'phone_number': str,
 	
-	'shipping_street_number': str, 'shipping_street_name': str,
-	'shipping_street_apt': str, # | None,
+	'shipping_street': str,
 	'shipping_city': str, 'shipping_state': str, 'shipping_zip': int,
 	
-	'billing_street_number': str, 'billing_street_name': str,
-	'billing_street_apt': str, # | None,
+	'billing_street': str,
 	'billing_city': str, 'billing_state': str, 'billing_zip': int
 })
 def create_customer(form):
 	shipping_id = actions.create_address( cur,
-		form['shipping_street_number'], form['shipping_street_name'],
-		form['shipping_street_apt'],
+		form['shipping_street'],
 		form['shipping_city'], form['shipping_state'], form['shipping_zip']
 	)
 	billing_id = actions.create_address( cur,
-		form['billing_street_number'], form['billing_street_name'],
-		form['billing_street_apt'],
+		form['billing_street'],
 		form['billing_city'], form['billing_state'], form['billing_zip']
 	)
 	customer_id = actions.create_customer( cur,
@@ -109,9 +105,7 @@ def get_address(address: int):
 	'customer': int,
 	'type': str, # Literal['shipping'] | Literal['billing'],
 	
-	'street_number': str, 'street_name': str,
-	'street_apt': str, # | None,
-	'city': str, 'state': str, 'zip': int,
+	'street': str, 'city': str, 'state': str, 'zip': int,
 })
 def edit_customer_address(form):
 	customer = form['customer']

@@ -56,11 +56,9 @@ def get_customer_info(cur: Cursor, customer_id: int):
 				first_name, middle_name, last_name,
 				email, password,
 				shipping_address,
-				shipping.street_number, shipping.street_name, shipping.street_apt,
-				shipping.city, shipping.state, shipping.zip,
+				shipping.street, shipping.city, shipping.state, shipping.zip,
 				billing_address,
-				billing.street_number, billing.street_name, billing.street_apt,
-				billing.city, billing.state, billing.zip,
+				billing.street, billing.city, billing.state, billing.zip,
 				phone_number
 			FROM customer
 				JOIN address AS shipping ON shipping_address = shipping.address_id
@@ -72,10 +70,10 @@ def get_customer_info(cur: Cursor, customer_id: int):
 		first_name, middle_name, last_name,
 		email, password,
 		shipping_address,
-		shipping_street_number, shipping_street_name, shipping_street_apt,
+		shipping_street,
 		shipping_city, shipping_state, shipping_zip,
 		billing_address,
-		billing_street_number, billing_street_name, billing_street_apt,
+		billing_street,
 		billing_city, billing_state, billing_zip,
 		phone_number
 	) = cur.fetchone()
@@ -91,22 +89,14 @@ def get_customer_info(cur: Cursor, customer_id: int):
 		'address': {
 			'shipping': {
 				'id': shipping_address,
-				'street': {
-					'number': shipping_street_number,
-					'name': shipping_street_name,
-					'apartment': shipping_street_apt
-				},
+				'street': shipping_street,
 				'city': shipping_city,
 				'state': shipping_state,
 				'zip': shipping_zip
 			},
 			'billing': {
 				'id': billing_address,
-				'street': {
-					'number': billing_street_number,
-					'name': billing_street_name,
-					'apartment': billing_street_apt
-				},
+				'street': billing_street,
 				'city': billing_city,
 				'state': billing_state,
 				'zip': billing_zip
@@ -156,8 +146,7 @@ def edit_customer(cur: Cursor, customer_id: int, **fields):
 
 def create_address(
 	cur: Cursor,
-	street_number: str, street_name: str, street_apt: str | None,
-	city: str, state: str, zip: int
+	street: str, city: str, state: str, zip: int
 ) -> int:
 	"""
 	Create a new address.
@@ -167,28 +156,20 @@ def create_address(
 	cur.execute("""
 		SELECT MIN(address_id)
 		FROM address
-		WHERE street_number = ?
-		AND	street_name = ?
-		AND street_apt = ?
+		WHERE street = ?
 		AND city = ? AND state = ?
 		AND zip = ?;
 	""", (
-		street_number, street_name, street_apt,
-		city, state, zip
+		street, city, state, zip
 	))
 	existing_address: int | None = cur.fetchone()[0]
 	
 	if existing_address is None:
 		cur.execute("""
 			INSERT INTO address (
-				street_number, street_name,
-				street_apt,
-				city, state, zip
-			) VALUES (?, ?, ?, ?, ?, ?);
-		""", (
-			street_number, street_name, street_apt,
-			city, state, zip
-		))
+				street, city, state, zip
+			) VALUES (?, ?, ?, ?);
+		""", ( street, city, state, zip ))
 		return cur.lastrowid # type: ignore
 	else:
 		return existing_address # type: ignore
@@ -198,25 +179,18 @@ def get_address_info(cur: Cursor, address_id: int):
 	
 	cur.execute("""
 		SELECT
-			street_number, street_name, street_apt,
-			city, state, zip
+			street, city, state, zip
 		FROM address
 		WHERE address_id = ?;
 		""", (address_id,))
 	
-	(
-		street_number, street_name, street_apt,
-		city, state, zip_code
-	) = cur.fetchone()
+	( street, city, state, zip_code ) = cur.fetchone()
 	
 	return {
 		'id': address_id,
-		'street': {
-			'number': street_number,
-			'name': street_name,
-			'apartment': street_apt
-		},
-		'city': city, 'state': state, 'zip': zip_code
+		'street': street,
+		'city': city, 'state': state,
+		'zip': zip_code
 	}
 
 def update_customer_address(
@@ -230,10 +204,7 @@ def update_customer_address(
 	create a new address entry.
 	"""
 	
-	valid_fields = [
-		'street_number', 'street_name', 'street_apt',
-		'city', 'state', 'zip'
-	]
+	valid_fields = [ 'street', 'city', 'state', 'zip' ]
 	
 	if address_type not in ['shipping', 'billing']:
 		raise Exception("address_type must be either 'shipping' or 'billing'")
@@ -275,8 +246,7 @@ def update_customer_address(
 	if need_to_clone:
 		query = """
 			INSERT INTO address (
-				street_number, street_name, street_apt,
-				city, state, zip
+				street, city, state, zip
 			) SELECT 
 		"""
 		params = []

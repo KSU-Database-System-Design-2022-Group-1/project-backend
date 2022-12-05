@@ -11,9 +11,7 @@ USE kstores;
 CREATE TABLE `address` (
 	address_id INT AUTO_INCREMENT NOT NULL,
 	
-	street_number VARCHAR(5) NOT NULL,
-	street_name VARCHAR(25) NOT NULL,
-	street_apt VARCHAR(25),
+	street VARCHAR(64) NOT NULL,
 	city VARCHAR(40) NOT NULL,
 	state CHAR(2) NOT NULL,
 	zip INT NOT NULL,

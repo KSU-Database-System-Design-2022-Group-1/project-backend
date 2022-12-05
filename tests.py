@@ -38,10 +38,9 @@ def run_tests(cur: Cursor):
 	
 	cur.execute("""
 		INSERT INTO address (
-			street_number, street_name, street_apt,
-			city, state, zip
+			street, city, state, zip
 		) VALUES (
-			'123', 'among st', NULL,
+			'123 among st',
 			'Akron', 'OH', '44240'
 		);
 	""")
