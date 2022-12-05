@@ -140,6 +140,8 @@ def get_image(image: int):
 	'category': list[str],
 	'size': list[str],
 	'color': list[str],
+	'minprice': int,
+	'maxprice': int,
 	'instock': bool,
 })
 def catalog_list(form):
