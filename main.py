@@ -166,12 +166,12 @@ def add_to_cart(customer: int, item: int, variant: int, quantity: int):
 	actions.add_to_cart(cur, customer, item, variant, quantity)
 	return {}
 
-@app.route("/cart/remove", methods=['POST'])
-@catch_exception
-@fill_params_from_form
-def remove_from_cart(customer: int, item: int, variant: int):
-	actions.remove_from_cart(cur, customer, item, variant)
-	return {}
+# @app.route("/cart/remove", methods=['POST'])
+# @catch_exception
+# @fill_params_from_form
+# def remove_from_cart(customer: int, item: int, variant: int):
+# 	actions.remove_from_cart(cur, customer, item, variant)
+# 	return {}
 
 @app.route("/cart/checkout", methods=['POST'])
 @catch_exception

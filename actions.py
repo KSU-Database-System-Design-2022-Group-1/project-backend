@@ -630,22 +630,12 @@ def add_to_cart(
 	If the item is already present in the cart, this will reset its
 	quantity to the specified number blah blah.
 	"""
-	cur.execute("""
-		REPLACE INTO shopping_cart (
-			customer_id, item_id, variant_id, quantity
-		) VALUES (?, ?, ?, ?);
-		""", (customer_id, item_id, variant_id, quantity))
-def remove_from_cart(
-	cur: Cursor,
-	customer_id: int,
-	item_id: int | None, variant_id: int | None
-):
-	""" Remove an item from the cart / the entire cart's contents. """
-	if item_id is None or variant_id is None:
+	if quantity > 0:
 		cur.execute("""
-			DELETE FROM shopping_cart
-			WHERE customer_id = ?;
-			""", (customer_id,))
+			REPLACE INTO shopping_cart (
+				customer_id, item_id, variant_id, quantity
+			) VALUES (?, ?, ?, ?);
+			""", (customer_id, item_id, variant_id, quantity))
 	else:
 		cur.execute("""
 			DELETE FROM shopping_cart
@@ -653,6 +643,24 @@ def remove_from_cart(
 			AND item_id = ?
 			AND variant_id = ?;
 			""", (customer_id, item_id, variant_id))
+# def remove_from_cart(
+# 	cur: Cursor,
+# 	customer_id: int,
+# 	item_id: int | None, variant_id: int | None
+# ):
+# 	""" Remove an item from the cart / the entire cart's contents. """
+# 	if item_id is None or variant_id is None:
+# 		cur.execute("""
+# 			DELETE FROM shopping_cart
+# 			WHERE customer_id = ?;
+# 			""", (customer_id,))
+# 	else:
+# 		cur.execute("""
+# 			DELETE FROM shopping_cart
+# 			WHERE customer_id = ?
+# 			AND item_id = ?
+# 			AND variant_id = ?;
+# 			""", (customer_id, item_id, variant_id))
 
 def place_order(cur: Cursor, customer_id: int) -> int:
 	"""
