@@ -9,7 +9,7 @@ sizes = ['XS', 'S', 'M', 'L', 'XL']
 def check_login(cur: Cursor, email: str, password: str) -> bool:
 	cur.execute("""
 		SELECT COUNT(*)
-		FROM accounts
+		FROM customer
 		WHERE email = ?
 		AND password = ?;
 	""", (email, password))
