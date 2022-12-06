@@ -1,16 +1,11 @@
 import sys, os
 
-from mariadb import mariadb, Cursor, Connection
+from mariadb import mariadb, Cursor, Connection, ConnectionPool
 from flask import Flask, request, send_file
 from flask_cors import CORS
 
 import actions
-from decorators import catch_exception, fill_dict_from_form, fill_params_from_form
-
-# FIXME: mariadb connection only has threadsafety of 1..
-# pool: ConnectionPool = None # type: ignore
-cur: Cursor = None # type: ignore
-conn: Connection = None # type: ignore
+from decorators import catch_exception, db_connect, fill_dict_from_form, fill_params_from_form
 
 app = Flask(__name__)
 CORS(app)
@@ -19,13 +14,6 @@ if not os.path.exists("./images"):
 	os.mkdir("./images")
 
 app.config["DEBUG"] = True
-
-db_config = {
-	'host': 'localhost',
-	'port': 3306,
-	'user': 'root',
-	'database': 'kstores'
-}
 
 # ROUTES
 
@@ -51,7 +39,7 @@ def signin(cur: Cursor, email: str, password: str):
 	'billing_street': str,
 	'billing_city': str, 'billing_state': str, 'billing_zip': int
 })
-def create_customer(form):
+def create_customer(cur: Cursor, form):
 	shipping_id = actions.create_address( cur,
 		form['shipping_street'],
 		form['shipping_city'], form['shipping_state'], form['shipping_zip']
@@ -77,7 +65,7 @@ def create_customer(form):
 @app.route("/customer/get", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def get_customer(customer: int):
+def get_customer(cur: Cursor, customer: int):
 	return actions.get_customer_info(cur, customer)
 
 @app.route("/customer/edit", methods=['POST'])
@@ -89,7 +77,7 @@ def get_customer(customer: int):
 	'email': str, 'password': str,
 	'phone_number': str
 })
-def edit_customer(form):
+def edit_customer(cur: Cursor, form):
 	customer = form['customer']
 	actions.edit_customer( cur, customer, **form )
 	return {}
@@ -97,7 +85,7 @@ def edit_customer(form):
 @app.route("/address/get", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def get_address(address: int):
+def get_address(cur: Cursor, address: int):
 	return actions.get_address_info(cur, address)
 
 @app.route("/address/edit", methods=['POST'])
@@ -108,14 +96,14 @@ def get_address(address: int):
 	
 	'street': str, 'city': str, 'state': str, 'zip': int,
 })
-def edit_customer_address(form):
+def edit_customer_address(cur: Cursor, form):
 	customer = form['customer']
 	address_type = form['type']
 	return actions.update_customer_address(cur, customer, address_type, **form)
 
 @app.route("/image/create", methods=['POST'])
 @catch_exception
-def create_image():
+def create_image(cur: Cursor):
 	image_req = request.files['image']
 	image_id = actions.create_image(cur, image_req.mimetype, request.form.get('alt_text'))
 	image_req.save(f"./images/{image_id}")
@@ -124,8 +112,11 @@ def create_image():
 @app.route("/image/get", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def get_image(image: int):
-	(mime_type, _) = actions.get_image_info(cur, image)
+def get_image(cur: Cursor, image: int):
+	if image is None:
+		return "", 500
+	x = actions.get_image_info(cur, image)
+	mime_type = x['mime_type']
 	return send_file(f"./images/{image}", mimetype=mime_type)
 
 @app.route("/catalog/search", methods=['GET'])
@@ -139,37 +130,37 @@ def get_image(image: int):
 	'maxprice': int,
 	'instock': bool,
 })
-def catalog_list(form):
+def catalog_list(cur: Cursor, form):
 	return { 'items': actions.search_catalog( cur, **form ) }
 
 @app.route("/catalog/get", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def get_item_info(item: int):
+def get_item_info(cur: Cursor, item: int):
 	return actions.get_item_info(cur, item)
 
 @app.route("/cart/info", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def cart_count(customer: int):
+def cart_count(cur: Cursor, customer: int):
 	return actions.get_cart_info(cur, customer)
 
 @app.route("/cart/list", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def cart_list(customer: int):
+def cart_list(cur: Cursor, customer: int):
 	return { 'items': actions.get_cart_items(cur, customer) }
 
 @app.route("/cart/add", methods=['POST'])
 @catch_exception
 @fill_params_from_form
-def add_to_cart(customer: int, item: int, variant: int, quantity: int):
+def add_to_cart(cur: Cursor, customer: int, item: int, variant: int, quantity: int):
 	actions.add_to_cart(cur, customer, item, variant, quantity)
 	return {}
 
 # @app.route("/cart/remove", methods=['POST'])
 # @catch_exception
-# @fill_params_from_form
+# @fill_params_from_form()
 # def remove_from_cart(customer: int, item: int, variant: int):
 # 	actions.remove_from_cart(cur, customer, item, variant)
 # 	return {}
@@ -177,19 +168,19 @@ def add_to_cart(customer: int, item: int, variant: int, quantity: int):
 @app.route("/cart/checkout", methods=['POST'])
 @catch_exception
 @fill_params_from_form
-def checkout(customer: int):
+def checkout(cur: Cursor, customer: int):
 	return { 'order': actions.place_order(cur, customer) }
 
 @app.route("/order/list", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def list_orders(customer: int):
+def list_orders(cur: Cursor, customer: int):
 	return { 'orders': actions.list_orders(cur, customer) }
 
 @app.route("/order/get", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def list_order(order: int):
+def list_order(cur: Cursor, order: int):
 	return {
 		**actions.get_order_info(cur, order),
 		'items': actions.list_order_items(cur, order)
@@ -232,21 +223,9 @@ def aaa():
 # https://mariadb.com/docs/connect/programming-languages/python/
 
 try:
-	# # Set up a connection pool
-	# pool = mariadb.ConnectionPool(
-	# 	pool_name = 'kstores_pool', pool_size = 4,
-	# 	**db_config
-	# )
 	
 	# Connect to the database.
-	conn = mariadb.connect(**db_config) # type: ignore
-	
-	if not isinstance(conn, Connection):
-		print("Connection :(")
-		raise Exception
-	
-	# Make a cursor into the database.
-	cur = conn.cursor()
+	# conn = mariadb.connect(**db_config) # type: ignore
 	
 	# Run the server
 	app.run(port=3000)
@@ -257,13 +236,3 @@ except mariadb.Error as e:
 	
 except Exception as e:
 	print(repr(e))
-	
-finally:
-	if isinstance(cur, Cursor):
-		cur.close()
-	
-	# Save everything you've done, then
-	# close connection to the database.
-	if isinstance(conn, Connection):
-		conn.commit()
-		conn.close()
