@@ -124,8 +124,6 @@ def edit_customer(cur: Cursor, customer_id: int, **fields):
 	
 	if customer_id is None:
 		raise Exception("missing customer id!")
-	if len(fields) < 1:
-		return
 	
 	query = """
 		UPDATE customer
@@ -145,6 +143,9 @@ def edit_customer(cur: Cursor, customer_id: int, **fields):
 		
 		query += f"{field} = ?"
 		params.append(value)
+	
+	if len(params) < 1:
+		raise Exception("no params; request may be malformed")
 	
 	query += "\nWHERE customer_id = ?;"
 	params.append(customer_id)
