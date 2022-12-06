@@ -29,7 +29,7 @@ def bad(s: str | None) -> str:
 	return f"'{s}'"
 
 def priceFromSize(basePrice: str, size: str | None) -> str:
-	if size is None:
+	if size is None or (size == "N/A"):
 		return basePrice
 	sizes = [ 'XS', 'S', 'M', 'L', 'XL' ]
 	size_index = (sizes.index(size) - 2) / 2

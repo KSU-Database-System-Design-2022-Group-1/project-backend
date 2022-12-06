@@ -5,16 +5,16 @@ ID,Size,Color,Price,Weight,Stock,Image
 1,"XS,S,M,L,XL",Kent Gold,12.99,0.9,10,Kent-Gold-Polo-Shirt.png
 2,"XS,S,M,L,XL",Gray,11.99,0.9,10,Gray-T-Shirt.png
 2,"XS,S,M,L,XL",Black,11.99,0.9,10,Black-T-Shirt.png
-2,"XS,S,M,L,XL",White,11.99,0.9,10,White-T-Shirt.png
+2,"XS,S,M,L,XL",White,11.99,0.9,3,White-T-Shirt.png
 2,"XS,S,M,L,XL",Navy Blue,11.99,0.9,10,Navy-Blue-T-Shirt.png
 3,"XS,S,M,L,XL",Gray,9.99,0.9,10,Gray-Tank-Top.png
-3,"XS,S,M,L,XL",Black,9.99,0.9,10,Black-Tank-Top.png
+3,"XS,S,M,L,XL",Black,9.99,0.9,1,Black-Tank-Top.png
 3,"XS,S,M,L,XL",White,9.99,0.9,10,White-Tank-Top.png
 3,"XS,S,M,L,XL",Navy Blue,9.99,0.9,10,Navy-Blue-Tank-Top.png
 3,"XS,S,M,L,XL",Kent Gold,10.99,0.9,10,Kent-Gold-Tank-Top.png
 4,"XS,S,M,L,XL",Gray,10.99,0.9,10,Gray-Sweatshirt.png
 4,"XS,S,M,L,XL",Black,10.99,0.9,10,Black-Sweatshirt.png
-4,"XS,S,M,L,XL",Navy Blue,10.99,0.9,10,Navy-Blue-Sweatshirt.png
+4,"XS,S,M,L,XL",Navy Blue,10.99,0.9,0,Navy-Blue-Sweatshirt.png
 4,"XS,S,M,L,XL",Kent Gold,10.99,0.9,10,Kent-Gold-Sweatshirt.png
 5,"XS,S,M,L,XL",Light Blue,11.99,0.9,10,Light-Blue-Jeans.png
 5,"XS,S,M,L,XL",Dark Blue,11.99,0.9,10,Dark-Blue-Jeans.png
@@ -25,8 +25,8 @@ ID,Size,Color,Price,Weight,Stock,Image
 9,"XS,S,M,L,XL",White,4.99,0.9,10,White-Ankle-Sock.png
 9,"XS,S,M,L,XL",Black,4.99,0.9,10,Black-Ankle-Sock.png
 10,"XS,S,M,L,XL",,6.99,0.9,10,Kent-Flip-Flops.png
-11,M,,3.99,0.9,10,Kent-Ballcap.png
-12,"XS,S,M,L,XL",,3.99,0.9,10,Kent-Beanie.png
+11,M,Black,3.99,0.9,10,Kent-Ballcap.png
+12,"XS,S,M,L,XL",Black,3.99,0.9,10,Kent-Beanie.png
 13,"XS,S,M,L,XL",Black,3.99,0.9,10,Black-Backpack.png
 13,"XS,S,M,L,XL",Navy Blue,2.99,0.9,10,Navy-Blue-Backpack.png
 14,"XS,S,M,L,XL",Black,33.99,0.9,10,Black-Purse.png
@@ -39,5 +39,5 @@ ID,Size,Color,Price,Weight,Stock,Image
 17,"XS,S,M,L,XL",Navy Blue,1234.99,0.9,10,Navy-Blue-Hoodie.png
 18,"XS,S,M,L,XL",Black,1234.99,0.9,10,Black-Kent-Hoodie.png
 18,"XS,S,M,L,XL",Navy Blue,1122.99,0.9,10,Navy-Blue-Kent-Hoodie.png
-19,,,1112.99,0.3,5,Kent-Necklace.png
-20,,,1112.99,0.3,5,Kent-Ring.png
+19,"N/A",,1112.99,0.3,5,Kent-Necklace.png
+20,"N/A",,1112.99,0.3,5,Kent-Ring.png

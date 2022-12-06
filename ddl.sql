@@ -67,7 +67,7 @@ CREATE TABLE variant_catalog (
 	item_id INT NOT NULL,
 	variant_id INT NOT NULL,
 	
-	size ENUM('XS', 'S', 'M', 'L', 'XL'),
+	size ENUM('N/A', 'XS', 'S', 'M', 'L', 'XL') NOT NULL,
 	color VARCHAR(32),
 	price DECIMAL(6,2) NOT NULL,
 	stock INT UNSIGNED NOT NULL,

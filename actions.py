@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 from mariadb import Cursor
 
-sizes = ['XS', 'S', 'M', 'L', 'XL']
+sizes = ['N/A', 'XS', 'S', 'M', 'L', 'XL']
 
 def check_login(cur: Cursor, email: str, password: str) -> tuple[bool, int | None]:
 	""" Check if user's email/password pair is valid. """

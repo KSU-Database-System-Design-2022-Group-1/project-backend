@@ -1,8 +1,8 @@
 ID,Category,Name,Description,Image
-1,Shirt,Polo,"Quality Made Polo Shirts, 50% Cotton 50% Bill Reed",Gray-Polo-Shirt.png
-2,Shirt,T-Shirt,Quality Made T-Shirts,Gray-T-Shirt.png
-3,Shirt,Tank-Top,"Quality Made Tank-Top, 100% Waterproof & Elastic",Gray-Tank-Top.png
-4,Shirt,Sweatshirt,"Quality Made Sweatshirts, 50% Cotton 50% Bill Reed",Gray-Sweatshirt.png
+1,Shirts,Polo,"Quality Made Polo Shirts, 50% Cotton 50% Bill Reed",Gray-Polo-Shirt.png
+2,Shirts,T-Shirt,Quality Made T-Shirts,Gray-T-Shirt.png
+3,Shirts,Tank-Top,"Quality Made Tank-Top, 100% Waterproof & Elastic",Gray-Tank-Top.png
+4,Shirts,Sweatshirt,"Quality Made Sweatshirts, 50% Cotton 50% Bill Reed",Gray-Sweatshirt.png
 5,Pants,Jeans,Quality Made Jeans with Premium Denim,Light-Blue-Jeans.png
 6,Pants,Kent Jeans,Quality Made Jeans with Premium Denim,Kent-Jeans.png
 7,Pants,Kent Sweatpants,Quality Made Sweats with 100% Odor-Proof,Kent-Sweatpants.png
@@ -11,11 +11,11 @@ ID,Category,Name,Description,Image
 10,Shoes,Kent Flip Flops,Quality Made Waterproof Slippers,Kent-Flip-Flops.png
 11,Hats,Kent BallCap,Quality Made Ball Cap,Kent-Ballcap.png
 12,Hats,Kent Beanie,Quality Made Beanie,Kent-Beanie.png
-13,Bags & Purses,Backpack,Quality Made Backpacks,Black-Backpack.png
-14,Bags & Purses,Purse,Quality Made Purses,Black-Purse.png
-15,Coats & Jackets,Sweatshirt,Quality Made Sweatshirts,Black-Sweatshirt.png
-16,Coats & Jackets,Kent Sweatshirt,Quality Made Kent Sweatshirts,Black-Kent-Sweatshirt.png
-17,Coats & Jackets,Hoodie,Quality Made Hoodies,Black-Hoodie.png
-18,Coats & Jackets,Kent Hoodie,Quality Made Hoodies,Black-Kent-Hoodie.png
+13,Bags,Backpack,Quality Made Backpacks,Black-Backpack.png
+14,Bags,Purse,Quality Made Purses,Black-Purse.png
+15,Coats,Sweatshirt,Quality Made Sweatshirts,Black-Sweatshirt.png
+16,Coats,Kent Sweatshirt,Quality Made Kent Sweatshirts,Black-Kent-Sweatshirt.png
+17,Coats,Hoodie,Quality Made Hoodies,Black-Hoodie.png
+18,Coats,Kent Hoodie,Quality Made Hoodies,Black-Kent-Hoodie.png
 19,Jewelery,Necklace,Quality Made Necklaces,Kent-Necklace.png
 20,Jewelery,Ring,Quality Made Rings from lord of the Rings,Kent-Ring.png
