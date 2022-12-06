@@ -817,6 +817,7 @@ def list_order_items(cur: Cursor, order_id: int):
 			size, color,
 			price, weight,
 			quantity,
+			(price * quantity) AS total_price,
 			COALESCE(variant_image, item_image) AS image_id
 		FROM this_order JOIN (
 			variant_catalog JOIN item_catalog USING (item_id)
@@ -829,6 +830,7 @@ def list_order_items(cur: Cursor, order_id: int):
 		'size': size, 'color': color,
 		'price': price, 'weight': weight,
 		'quantity': quantity,
+		'total_price': total_price,
 		'image': image_id
 	} for (
 		item_id, variant_id,
@@ -836,5 +838,6 @@ def list_order_items(cur: Cursor, order_id: int):
 		size, color,
 		price, weight,
 		quantity,
+		total_price,
 		image_id
 	) in cur]
