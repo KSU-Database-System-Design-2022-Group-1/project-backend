@@ -114,7 +114,7 @@ def create_image(cur: Cursor):
 @fill_params_from_form
 def get_image(cur: Cursor, image: int):
 	if image is None:
-		return "", 500
+		raise Exception("no image with that id")
 	x = actions.get_image_info(cur, image)
 	mime_type = x['mime_type']
 	return send_file(f"./images/{image}", mimetype=mime_type)

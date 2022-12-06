@@ -69,11 +69,17 @@ def fill_dict_from_form(types: dict[str, type]):
 				or form[param] == [""] \
 				or form[param] == []:
 					form[param] = None
-			r = fn(cur, form)
-			cur.close()
-			conn.commit()
-			conn.close()
-			return r
+			try:
+				r = fn(cur, form)
+				cur.close()
+				conn.commit()
+				conn.close()
+				return r
+			except Exception as e:
+				cur.close()
+				conn.commit()
+				conn.close()
+				raise e
 		return inner
 	return inner_decorator
 
@@ -106,11 +112,17 @@ def fill_params_from_form(fn):
 			or args[param] == [] \
 			or args[param] == [""]:
 				args[param] = None
-		r = fn(cur, **args)
-		cur.close()
-		conn.commit()
-		conn.close()
-		return r
+		try:
+			r = fn(cur, **args)
+			cur.close()
+			conn.commit()
+			conn.close()
+			return r
+		except Exception as e:
+			cur.close()
+			conn.commit()
+			conn.close()
+			raise e
 	return inner
 
 # TODO: it'd be nice if these handled optionals and raised an error if they were absent.
