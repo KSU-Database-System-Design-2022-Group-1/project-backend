@@ -80,7 +80,7 @@ with open('dml.sql', 'w') as dml_sql:
 			(i, row) = indexed_typed_dict(row)
 			
 			if i != last_index:
-				variant_id = 1
+				variant_id = 0
 				last_index = i
 			
 			image_index = 0

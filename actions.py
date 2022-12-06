@@ -547,7 +547,7 @@ def create_catalog_item(
 	# Save auto-incrementing item_id
 	item_id = cur.lastrowid
 	
-	next_variant_id = 1 # get_next_variant_id(item_id)
+	next_variant_id = 0 # get_next_variant_id(item_id)
 	
 	variants_indexed = [
 		(item_id, variant_id) + variant

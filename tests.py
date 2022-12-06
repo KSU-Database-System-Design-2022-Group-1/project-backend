@@ -13,7 +13,7 @@ import actions
 
 def test_shop_two_items_and_order(cur: Cursor, customer_id: int, items: list[int]):
 	import random
-	actions.add_to_cart(cur, customer_id, random.choice(items), random.randint(1, 3))
+	actions.add_to_cart(cur, customer_id, random.choice(items), random.randint(0, 2))
 	# actions.place_order(cur, customer_id)
 
 # def test_create_more_variants_afterward(cur: Cursor, item_id: int):
