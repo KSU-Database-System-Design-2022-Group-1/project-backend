@@ -4,21 +4,21 @@ from mariadb import Cursor, Connection, mariadb
 
 import actions
 
-def test_create_item_with_variants(cur: Cursor) -> int:
-	return actions.create_catalog_item(cur, "Kent Shirt", "A shirt with the KSU logo", 'shirt', [
-		('M', 'Blue', 19.95, 1.07, 1),
-		('L', 'Green', 20.95, 1.24, 1),
-		('XS', 'Green', 18.65, 0.92, 1)
-	])
+# def test_create_item_with_variants(cur: Cursor) -> int:
+# 	return actions.create_catalog_item(cur, "Kent Shirt", "A shirt with the KSU logo", 'shirt', [
+# 		('M', 'Blue', 19.95, 1.07, 1),
+# 		('L', 'Green', 20.95, 1.24, 1),
+# 		('XS', 'Green', 18.65, 0.92, 1)
+# 	])
 
 def test_shop_two_items_and_order(cur: Cursor, customer_id: int, items: list[int]):
 	import random
 	actions.add_to_cart(cur, customer_id, random.choice(items), random.randint(1, 3))
-	actions.place_order(cur, customer_id)
+	# actions.place_order(cur, customer_id)
 
-def test_create_more_variants_afterward(cur: Cursor, item_id: int):
-	actions.create_catalog_item_variant(cur, item_id, None, 'XL', 'Solid Gold', 99.99, 120.0, 1)
-	actions.create_catalog_item_variant(cur, item_id, 99, 'S', 'NFT', 990.99, 0.0, 1)
+# def test_create_more_variants_afterward(cur: Cursor, item_id: int):
+# 	actions.create_catalog_item_variant(cur, item_id, None, 'XL', 'Solid Gold', 99.99, 120.0, 1)
+# 	actions.create_catalog_item_variant(cur, item_id, 99, 'S', 'NFT', 990.99, 0.0, 1)
 
 def run_tests(cur: Cursor):
 	cur.execute("""
@@ -54,12 +54,12 @@ def run_tests(cur: Cursor):
 	""", (addr, addr, guy))
 	print("He has an Address and a Phone Number.")
 	
-	item1 = test_create_item_with_variants(cur)
-	item2 = test_create_item_with_variants(cur)
-	test_create_more_variants_afterward(cur, item2)
-	print("created all sorts of items.")
+	# item1 = test_create_item_with_variants(cur)
+	# item2 = test_create_item_with_variants(cur)
+	# test_create_more_variants_afterward(cur, item2)
+	# print("created all sorts of items.")
 	
-	test_shop_two_items_and_order(cur, guy, [item1, item2])
+	test_shop_two_items_and_order(cur, guy, [1, 2])
 	print("the guy bought two items and checked out.")
 
 if __name__ == '__main__':

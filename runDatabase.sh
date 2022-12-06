@@ -154,6 +154,12 @@ Creating from the 'ddl.sql' definition script..."
 	"$MARIADB_PATH"/mysql -u root -h localhost -P $MARIADB_PORT --show-warnings < ddl.sql
 	THE_SETUP_RESULT=$?
 	
+	if [ $THE_SETUP_RESULT -eq 0 ] && [ -s dml.sql ]; then
+		sayThing "Ooh, might run the store listing generator too."
+		"$MARIADB_PATH"/mysql -u root -h localhost -P $MARIADB_PORT --show-warnings < dml.sql
+		THE_SETUP_RESULT=$?
+	fi
+	
 	set -e # (Re-arm "quit script if non-zero exit status" flag from previous command.)
 	
 	# Once the definition script is done,
