@@ -37,6 +37,10 @@ def fill_dict_from_form(types: dict[str, type]):
 						raise Exception("unknown generic")
 				else:
 					form[param] = request.form.get(param, type=ty)
+				if form[param] == "" \
+				or form[param] == [""] \
+				or form[param] == []:
+					form[param] = None
 			return fn(form)
 		return inner
 	return inner_decorator
@@ -60,6 +64,10 @@ def fill_params_from_form(fn):
 					raise Exception("unknown generic")
 			else:
 				args[param] = request.form.get(param, type=ty)
+			if args[param] == "" \
+			or args[param] == [] \
+			or args[param] == [""]:
+				args[param] = None
 		return fn(**args)
 	return inner
 

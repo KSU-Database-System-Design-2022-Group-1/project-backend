@@ -44,23 +44,19 @@ def signin(email: str, password: str):
 	'email': str, 'password': str,
 	'phone_number': str,
 	
-	'shipping_street_number': str, 'shipping_street_name': str,
-	'shipping_street_apt': str, # | None,
+	'shipping_street': str,
 	'shipping_city': str, 'shipping_state': str, 'shipping_zip': int,
 	
-	'billing_street_number': str, 'billing_street_name': str,
-	'billing_street_apt': str, # | None,
+	'billing_street': str,
 	'billing_city': str, 'billing_state': str, 'billing_zip': int
 })
 def create_customer(form):
 	shipping_id = actions.create_address( cur,
-		form['shipping_street_number'], form['shipping_street_name'],
-		form['shipping_street_apt'],
+		form['shipping_street'],
 		form['shipping_city'], form['shipping_state'], form['shipping_zip']
 	)
 	billing_id = actions.create_address( cur,
-		form['billing_street_number'], form['billing_street_name'],
-		form['billing_street_apt'],
+		form['billing_street'],
 		form['billing_city'], form['billing_state'], form['billing_zip']
 	)
 	customer_id = actions.create_customer( cur,
@@ -77,17 +73,44 @@ def create_customer(form):
 		}
 	}
 
-@app.route("/catalog/search", methods=['GET'])
+@app.route("/customer/get", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def get_customer(customer: int):
+	return actions.get_customer_info(cur, customer)
+
+@app.route("/customer/edit", methods=['POST'])
 @catch_exception
 @fill_dict_from_form({
-	'name': list[str],
-	'category': list[str],
-	'size': list[str],
-	'color': list[str],
-	'instock': bool,
+	'customer': int,
+	
+	'first_name': str, 'middle_name': str, 'last_name': str,
+	'email': str, 'password': str,
+	'phone_number': str
 })
-def catalog_list(form):
-	return { 'items': actions.search_catalog( cur, **form ) }
+def edit_customer(form):
+	customer = form['customer']
+	actions.edit_customer( cur, customer, **form )
+	return {}
+
+@app.route("/address/get", methods=['GET'])
+@catch_exception
+@fill_params_from_form
+def get_address(address: int):
+	return actions.get_address_info(cur, address)
+
+@app.route("/address/edit", methods=['POST'])
+@catch_exception
+@fill_dict_from_form({
+	'customer': int,
+	'type': str, # Literal['shipping'] | Literal['billing'],
+	
+	'street': str, 'city': str, 'state': str, 'zip': int,
+})
+def edit_customer_address(form):
+	customer = form['customer']
+	address_type = form['type']
+	return actions.update_customer_address(cur, customer, address_type, **form)
 
 @app.route("/image/create", methods=['POST'])
 @catch_exception
@@ -103,6 +126,20 @@ def create_image():
 def get_image(image: int):
 	(mime_type, _) = actions.get_image_info(cur, image)
 	return send_file(f"./images/{image}", mimetype=mime_type)
+
+@app.route("/catalog/search", methods=['GET'])
+@catch_exception
+@fill_dict_from_form({
+	'name': list[str],
+	'category': list[str],
+	'size': list[str],
+	'color': list[str],
+	'minprice': int,
+	'maxprice': int,
+	'instock': bool,
+})
+def catalog_list(form):
+	return { 'items': actions.search_catalog( cur, **form ) }
 
 @app.route("/catalog/get", methods=['GET'])
 @catch_exception
@@ -129,12 +166,12 @@ def add_to_cart(customer: int, item: int, variant: int, quantity: int):
 	actions.add_to_cart(cur, customer, item, variant, quantity)
 	return {}
 
-@app.route("/cart/remove", methods=['POST'])
-@catch_exception
-@fill_params_from_form
-def remove_from_cart(customer: int, item: int, variant: int):
-	actions.remove_from_cart(cur, customer, item, variant)
-	return {}
+# @app.route("/cart/remove", methods=['POST'])
+# @catch_exception
+# @fill_params_from_form
+# def remove_from_cart(customer: int, item: int, variant: int):
+# 	actions.remove_from_cart(cur, customer, item, variant)
+# 	return {}
 
 @app.route("/cart/checkout", methods=['POST'])
 @catch_exception
