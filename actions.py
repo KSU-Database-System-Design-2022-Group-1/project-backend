@@ -5,15 +5,20 @@ from mariadb import Cursor
 
 sizes = ['XS', 'S', 'M', 'L', 'XL']
 
-def check_login(cur: Cursor, email: str, password: str) -> bool:
+def check_login(cur: Cursor, email: str, password: str) -> tuple[bool, int | None]:
 	""" Check if user's email/password pair is valid. """
 	cur.execute("""
-		SELECT COUNT(*)
+		SELECT customer_id
 		FROM customer
 		WHERE email = ?
-		AND password = ?;
+		AND password = ?
+		LIMIT 1;
 	""", (email, password))
-	return bool(cur.fetchall()[0][0])
+	
+	if cur.rowcount > 0:
+		return (True, cur.fetchone()[0])
+	else:
+		return (False, None)
 
 def create_customer(
 	cur: Cursor,

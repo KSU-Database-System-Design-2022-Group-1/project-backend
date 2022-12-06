@@ -34,8 +34,9 @@ db_config = {
 @app.route("/customer/signin", methods=['GET'])
 @catch_exception
 @fill_params_from_form
-def signin(email: str, password: str):
-	return { 'valid': actions.check_login(cur, email, password) }
+def signin(cur: Cursor, email: str, password: str):
+	(valid, customer) = actions.check_login(cur, email, password)
+	return { 'valid': valid, 'customer': customer }
 
 @app.route("/customer/signup", methods=['POST'])
 @catch_exception
