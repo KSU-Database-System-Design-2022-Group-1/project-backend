@@ -124,6 +124,8 @@ def edit_customer(cur: Cursor, customer_id: int, **fields):
 	
 	if customer_id is None:
 		raise Exception("missing customer id!")
+	if len(fields) < 1:
+		return
 	
 	query = """
 		UPDATE customer
