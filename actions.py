@@ -144,7 +144,7 @@ def edit_customer(cur: Cursor, customer_id: int, **fields):
 		query += f"{field} = ?"
 		params.append(value)
 	
-	query += "\nWHERE customer_id = ? LIMIT 1;"
+	query += "\nWHERE customer_id = ?;"
 	params.append(customer_id)
 	
 	cur.execute(query, params)
