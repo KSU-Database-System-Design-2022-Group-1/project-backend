@@ -444,6 +444,7 @@ def get_item_info(cur: Cursor, item_id: int):
 		SELECT item_id, variant_id,
 			size, color,
 			price, weight,
+			stock,
 			COALESCE(variant_image, item_image) AS image_id
 		FROM variant_catalog JOIN item_catalog USING (item_id)
 		WHERE item_id = ?;
@@ -454,11 +455,13 @@ def get_item_info(cur: Cursor, item_id: int):
 		'color': color, # warning: nullable!
 		'price': price,
 		'weight': weight,
+		'stock': stock,
 		'image': image_id
 	} for (
 		item_id, variant_id,
 		size, color,
 		price, weight,
+		stock,
 		image_id
 	) in cur]
 	
