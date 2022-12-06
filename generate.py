@@ -51,7 +51,7 @@ with open('dml.sql', 'w') as dml_sql:
 		for row in csv.DictReader(items_csv):
 			(i, row) = indexed_typed_dict(row)
 			
-			row['variants'] = []
+			# row['variants'] = []
 			
 			image_index = 0
 			try:
@@ -59,14 +59,16 @@ with open('dml.sql', 'w') as dml_sql:
 			except:
 				images.append(row['Image'])
 				image_index = len(images)
-				mime = bad(mimetypes.guess_type(row['Image'])[0])
 				try:
 					with open('./sourceImages/' + row['Image'], 'rb') as image:
 						with open('./images/' + str(image_index), 'wb') as dest:
 							dest.write(image.read())
+					mime = bad(mimetypes.guess_type(row['Image'])[0])
+					print(f"INSERT INTO catalog_images ( image_id, mime_type, alt_text ) VALUES ( {image_index}, {mime}, '' );", file=dml_sql)
 				except:
 					print(f"warning! no such image {row['Image']}")
-				print(f"INSERT INTO catalog_images ( image_id, mime_type, alt_text ) VALUES ( {image_index}, {mime}, '' );", file=dml_sql)
+					images.pop()
+					image_index = "NULL"
 			
 			print(f"INSERT INTO item_catalog ( item_id, item_name, description, category, item_image ) VALUES ( {i}, {bad(row['Name'])}, {bad(row['Description'])}, {bad(row['Category'])}, {image_index} );", file=dml_sql)
 			
@@ -92,9 +94,10 @@ with open('dml.sql', 'w') as dml_sql:
 					with open('./sourceImages/' + row['Image'], 'rb') as image:
 						with open('./images/' + str(image_index), 'wb') as dest:
 							dest.write(image.read())
+					print(f"INSERT INTO catalog_images ( image_id, mime_type, alt_text ) VALUES ( {image_index}, {mime}, '' );", file=dml_sql)
 				except:
 					print(f"warning! no such image {row['Image']}")
-				print(f"INSERT INTO catalog_images ( image_id, mime_type, alt_text ) VALUES ( {image_index}, {mime}, '' );", file=dml_sql)
+					image_index = "NULL"
 			
 			if row['Size'] is None:
 				row['Size'] = [ None ]

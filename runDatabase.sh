@@ -196,6 +196,16 @@ if [ "$#" -gt 0 ] && [ "$1" = "monitor" ]; then
 		sayThing "No MySQL server is running."
 		exit 1
 	fi
+elif [ "$#" -gt 0 ] && [ "$1" = "catalog" ]; then
+	# Only attempt to run monitor if MySQL is running locally.
+	if isRunning "/mysqld"; then
+		# Launch the monitor.
+		"$MARIADB_PATH"/mysql -u root -h localhost -P $MARIADB_PORT --show-warnings < dml.sql
+		sayThing "Destroyed catalog, remaking it from the SQL script. Great!"
+	else
+		sayThing "No MySQL server is running."
+		exit 1
+	fi
 else
 	# Launch the database server, without registering a Windows service.
 	sayThing "Running MySQL Server at port $MARIADB_PORT! Press Ctrl+C in terminal to stop."
